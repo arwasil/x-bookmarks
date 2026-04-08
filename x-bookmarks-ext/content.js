@@ -44,7 +44,7 @@
     <h3>
       <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:#1d9bf0"><path d="M4 2h14a2 2 0 012 2v18l-8-4-8 4V4a2 2 0 012-2z"/></svg>
       X Bookmarks Sync
-      <span style="margin-left:auto;font-size:10px;font-weight:400;color:rgba(255,255,255,0.3)">v1.2.0</span>
+      <span style="margin-left:auto;font-size:10px;font-weight:400;color:rgba(255,255,255,0.3)">v1.3.0</span>
     </h3>
     <div class="xbk-sub" id="xbk-sub">${hasExistingData ? knownIds.size.toLocaleString() + ' bookmarks cached' : 'Ready to sync'}</div>
     <div class="xbk-status" id="xbk-status">Ready</div>
@@ -182,8 +182,6 @@
     setProgress(0);
 
     const mode = incremental ? 'Quick sync' : 'Full sync';
-    const cutoffMs = incremental ? 48 * 60 * 60 * 1000 : 0; // 48h for quick sync
-    const cutoffDate = incremental ? new Date(Date.now() - cutoffMs) : null;
     setStatus(`${mode} — starting...`);
     countLabel.textContent = incremental ? 'new bookmarks' : 'bookmarks fetched';
 
@@ -224,15 +222,6 @@
 
           pageCount++;
 
-          // Time-based cutoff for quick sync: stop if tweet is older than 48h
-          if (incremental && cutoffDate && parsed.d) {
-            const tweetDate = new Date(parsed.d);
-            if (tweetDate < cutoffDate) {
-              hitCutoff = true;
-              break;
-            }
-          }
-
           // ID-based cutoff: stop if we see 3 consecutive known IDs
           if (incremental && knownIds.has(parsed.i)) {
             consecutiveExisting++;
@@ -255,6 +244,11 @@
           setProgress(Math.min(95, (newBookmarks.length / 4200) * 100));
         }
 
+        // Quick sync: stop after 15 pages (~300 bookmarks) max
+        if (incremental && page >= 15 && !hitCutoff) {
+          setStatus(`Quick sync — checked ${page} pages, ${newBookmarks.length} new found.`);
+          hitCutoff = true;
+        }
         if (hitCutoff || stopRequested || !nextCursor || pageCount === 0) break;
         cursor = nextCursor;
 

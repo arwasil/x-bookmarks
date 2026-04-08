@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "X Bookmarks Sync",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "One-click sync of your X/Twitter bookmarks to x-bookmarks.html",
   "permissions": ["cookies", "activeTab"],
   "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
