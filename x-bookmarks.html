@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%231d9bf0'/><path d='M6 3h10a1.5 1.5 0 011.5 1.5v14L12 15.5 6.5 18.5V4.5A1.5 1.5 0 018 3z' fill='white' transform='translate(1,1.5) scale(0.85)'/></svg>">
+<title>X Bookmarks</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root {
+    --bg: #0a0a0a; --surface: #161616; --surface-hover: #1e1e1e;
+    --border: rgba(255,255,255,0.08); --border-hover: rgba(255,255,255,0.15);
+    --text: #f0f0f0; --text-sec: rgba(255,255,255,0.5); --text-dim: rgba(255,255,255,0.35);
+    --accent: #1d9bf0; --glass: rgba(255,255,255,0.08); --glass-border: rgba(255,255,255,0.12);
+    --like: #f91880; --repost: #00ba7c; --radius: 16px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+  ::selection { background:rgba(29,155,240,0.3); }
+
+  .topbar { position:sticky; top:0; z-index:100; background:rgba(10,10,10,0.82); backdrop-filter:blur(20px) saturate(1.4); border-bottom:1px solid var(--border); padding:14px 24px; }
+  .topbar-inner { max-width:1400px; margin:0 auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .logo { display:flex; align-items:center; gap:8px; font-size:18px; font-weight:700; white-space:nowrap; }
+  .logo svg { width:22px; height:22px; fill:var(--text); }
+  .stats-bar { display:flex; gap:14px; font-size:12px; color:var(--text-sec); margin-left:4px; }
+  .stats-bar strong { color:var(--text); font-weight:600; }
+
+  .search-wrap { flex:1; min-width:200px; max-width:420px; position:relative; }
+  .search-wrap svg { position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; fill:var(--text-dim); pointer-events:none; }
+  .search-wrap input { width:100%; padding:9px 14px 9px 38px; background:var(--glass); border:1px solid var(--glass-border); border-radius:24px; color:var(--text); font-size:14px; font-family:inherit; outline:none; transition:border-color 0.2s, background 0.2s; }
+  .search-wrap input:focus { border-color:var(--accent); background:rgba(29,155,240,0.06); }
+  .search-wrap input::placeholder { color:var(--text-dim); }
+
+  .controls { display:flex; align-items:center; gap:8px; margin-left:auto; }
+  .pill { padding:7px 16px; border-radius:20px; border:1px solid var(--glass-border); background:var(--glass); color:var(--text-sec); font-size:12px; font-family:inherit; font-weight:500; cursor:pointer; transition:all 0.2s; backdrop-filter:blur(8px); white-space:nowrap; }
+  .pill:hover { background:rgba(255,255,255,0.12); color:var(--text); border-color:var(--border-hover); }
+  .pill.active { background:rgba(29,155,240,0.15); border-color:rgba(29,155,240,0.3); color:var(--accent); }
+  .pill-accent { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .pill-accent:hover { background:#1a8cd8; }
+
+  .filter-row { max-width:1400px; margin:12px auto 0; padding:0 24px; display:flex; gap:6px; align-items:flex-start; flex-wrap:wrap; }
+  .filter-label { font-size:12px; color:var(--text-dim); margin-right:4px; line-height:30px; }
+  #filterContainer { display:flex; gap:4px; flex-wrap:wrap; flex:1; min-width:0; }
+  .sort-group { display:flex; gap:4px; flex-shrink:0; }
+
+  .grid-wrap { max-width:1400px; margin:16px auto 0; padding:0 24px 60px; }
+  .masonry { columns:4; column-gap:14px; }
+  @media(max-width:1200px){ .masonry{columns:3;} }
+  @media(max-width:800px){ .masonry{columns:2;} }
+  @media(max-width:500px){ .masonry{columns:1;} }
+
+  /* THUMBNAIL GRID VIEW */
+  .thumb-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:4px; }
+  @media(max-width:500px){ .thumb-grid { grid-template-columns:repeat(3, 1fr); gap:3px; } }
+  .thumb { position:relative; aspect-ratio:1; overflow:hidden; border-radius:8px; cursor:pointer; background:#111; }
+  .thumb img, .thumb video { width:100%; height:100%; object-fit:cover; display:block; }
+  .thumb-overlay { position:absolute; inset:0; background:linear-gradient(transparent 50%, rgba(0,0,0,0.7)); opacity:0; transition:opacity 0.2s; display:flex; align-items:flex-end; padding:8px; }
+  .thumb:hover .thumb-overlay { opacity:1; }
+  .thumb-overlay span { color:#fff; font-size:11px; display:flex; align-items:center; gap:3px; }
+  .thumb-overlay span svg { width:11px; height:11px; fill:currentColor; }
+  .thumb-overlay .thumb-stats { display:flex; gap:8px; }
+  .thumb-play { position:absolute; top:6px; right:6px; background:rgba(0,0,0,0.6); border-radius:6px; padding:2px 6px; display:flex; align-items:center; gap:2px; }
+  .thumb-play svg { width:10px; height:10px; fill:#fff; }
+  .thumb-play span { font-size:9px; color:#fff; font-weight:600; }
+
+  /* VIEW TOGGLE */
+  .view-toggle { display:flex; gap:2px; background:var(--glass); border:1px solid var(--glass-border); border-radius:10px; padding:2px; }
+  .view-btn { width:30px; height:26px; border:none; background:transparent; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+  .view-btn svg { width:14px; height:14px; fill:var(--text-dim); }
+  .view-btn.active { background:rgba(29,155,240,0.15); }
+  .view-btn.active svg { fill:var(--accent); }
+  .view-btn:hover:not(.active) svg { fill:var(--text-sec); }
+
+  /* CARD */
+  .card { break-inside:avoid; margin-bottom:14px; border-radius:var(--radius); overflow:hidden; background:var(--surface); border:1px solid var(--border); cursor:pointer; transition:border-color 0.2s, transform 0.15s; position:relative; }
+  .card:hover { border-color:var(--border-hover); transform:translateY(-2px); }
+  .card-media { position:relative; background:#111; overflow:hidden; }
+  .card-img { width:100%; display:block; object-fit:cover; }
+  .card-video { width:100%; display:block; object-fit:cover; }
+  .card-multi { position:absolute; bottom:8px; right:8px; padding:3px 9px; border-radius:10px; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); color:#fff; font-size:10px; font-weight:600; }
+  .card-play { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:44px; height:44px; border-radius:50%; background:rgba(0,0,0,0.55); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; pointer-events:none; transition:opacity 0.2s; }
+  .card:hover .card-play { opacity:0; }
+  .card-body { padding:14px; }
+  .card-author { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .card-avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; color:#fff; flex-shrink:0; }
+  .card-name { font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:3px; }
+  .card-handle { font-size:12px; color:var(--text-dim); }
+  .card-name svg { width:14px; height:14px; fill:var(--accent); flex-shrink:0; }
+  .card-text { font-size:13px; line-height:1.45; color:rgba(255,255,255,0.78); margin-bottom:10px; max-height:80px; overflow:hidden; position:relative; word-break:break-word; white-space:pre-wrap; }
+  .card-text-fade { position:absolute; bottom:0; left:0; right:0; height:30px; background:linear-gradient(transparent, var(--surface)); }
+  .card-tags { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px; }
+  .tag { padding:2px 8px; border-radius:10px; font-size:10px; font-weight:500; }
+  .tag-cat { background:rgba(29,155,240,0.1); color:rgba(29,155,240,0.8); }
+  .tag-ai { background:rgba(139,92,246,0.12); color:#a78bfa; }
+  .tag-design { background:rgba(236,72,153,0.12); color:#f472b6; }
+  .tag-dev { background:rgba(16,185,129,0.12); color:#34d399; }
+  .tag-figma { background:rgba(162,89,255,0.15); color:#c084fc; }
+  .tag-uiux { background:rgba(244,114,182,0.12); color:#f9a8d4; }
+  .tag-startup { background:rgba(251,146,60,0.12); color:#fb923c; }
+  .tag-product { background:rgba(56,189,248,0.12); color:#38bdf8; }
+  .tag-travel { background:rgba(45,212,191,0.12); color:#2dd4bf; }
+  .tag-indonesia { background:rgba(239,68,68,0.12); color:#f87171; }
+  .tag-paper { background:rgba(167,139,250,0.12); color:#c4b5fd; }
+  .tag-news { background:rgba(250,204,21,0.12); color:#fbbf24; }
+  .tag-newtools { background:rgba(52,211,153,0.12); color:#6ee7b7; }
+  .tag-motion { background:rgba(249,115,22,0.12); color:#fb923c; }
+  .tag-finance { background:rgba(16,185,129,0.12); color:#a7f3d0; }
+  .tag-thread { background:rgba(99,102,241,0.12); color:#818cf8; }
+  .tag-meme { background:rgba(253,224,71,0.12); color:#fde047; }
+  .tag-3d { background:rgba(236,72,153,0.12); color:#f9a8d4; }
+  .tag-type { background:rgba(148,163,184,0.12); color:#94a3b8; }
+  .tag-branding { background:rgba(251,113,133,0.12); color:#fda4af; }
+  .tag-photo { background:rgba(14,165,233,0.12); color:#7dd3fc; }
+  .tag-illustration { background:rgba(244,114,182,0.12); color:#f9a8d4; }
+  .tag-leadership { background:rgba(217,119,6,0.12); color:#fbbf24; }
+  .tag-jobs { background:rgba(34,197,94,0.12); color:#86efac; }
+  .tag-tips { background:rgba(168,85,247,0.12); color:#c084fc; }
+  .tag-portfolio { background:rgba(99,102,241,0.12); color:#a5b4fc; }
+  .tag-claude { background:rgba(217,119,60,0.15); color:#e8956a; }
+  .tag-media { background:rgba(249,24,128,0.1); color:rgba(249,24,128,0.8); }
+  .pill-starred { background:rgba(250,204,21,0.12); border-color:rgba(250,204,21,0.25); color:#fbbf24; }
+  .pill-starred.active { background:rgba(250,204,21,0.2); border-color:rgba(250,204,21,0.4); }
+
+  /* STAR */
+  .card-star { position:absolute; top:8px; right:8px; z-index:5; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,0.5); backdrop-filter:blur(6px); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s; }
+  .card:hover .card-star { opacity:1; }
+  .card-star.starred { opacity:1; background:rgba(250,204,21,0.25); }
+  .card-star svg { width:16px; height:16px; fill:none; stroke:rgba(255,255,255,0.6); stroke-width:2; }
+  .card-star.starred svg { fill:#fbbf24; stroke:#fbbf24; }
+  .thumb-star { position:absolute; top:4px; left:4px; z-index:5; }
+  .thumb-star svg { width:14px; height:14px; fill:#fbbf24; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+  .lb-star { padding:8px 16px; border-radius:20px; background:var(--glass); border:1px solid var(--glass-border); color:var(--text); font-size:13px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; margin-right:8px; }
+  .lb-star:hover { background:rgba(250,204,21,0.12); border-color:rgba(250,204,21,0.3); }
+  .lb-star.starred { background:rgba(250,204,21,0.15); border-color:rgba(250,204,21,0.3); color:#fbbf24; }
+  .lb-star svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; }
+  .lb-star.starred svg { fill:#fbbf24; stroke:#fbbf24; }
+  .card-stats { display:flex; gap:12px; font-size:11px; color:var(--text-dim); }
+  .card-stats span { display:flex; align-items:center; gap:3px; }
+  .card-stats svg { width:12px; height:12px; fill:currentColor; }
+
+  /* LIGHTBOX */
+  .lightbox { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); display:none; align-items:center; justify-content:center; padding:40px; }
+  .lightbox.open { display:flex; }
+  .lb-close { position:absolute; top:20px; right:20px; width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.1); backdrop-filter:blur(12px); border:1px solid var(--glass-border); cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10; }
+  .lb-close:hover { background:rgba(255,255,255,0.2); }
+  .lb-close svg { width:20px; height:20px; stroke:#fff; fill:none; stroke-width:2; }
+  .lb-content { max-width:700px; width:100%; max-height:90vh; overflow:auto; border-radius:20px; background:var(--surface); border:1px solid var(--border); display:flex; flex-direction:column; }
+  .lb-img { width:100%; display:block; border-radius:20px 20px 0 0; max-height:60vh; object-fit:contain; background:#000; flex-shrink:0; }
+  .lb-vid { width:100%; display:block; border-radius:20px 20px 0 0; max-height:60vh; object-fit:contain; background:#000; flex-shrink:0; }
+  .lb-body { padding:20px; flex-shrink:0; }
+  .lb-author { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .lb-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; color:#fff; }
+  .lb-name { font-weight:600; font-size:15px; display:flex; align-items:center; gap:4px; }
+  .lb-name svg { width:16px; height:16px; fill:var(--accent); }
+  .lb-handle { font-size:13px; color:var(--text-sec); }
+  .lb-text { font-size:15px; line-height:1.55; margin-bottom:16px; white-space:pre-wrap; word-break:break-word; }
+  .lb-extras { display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:4px; }
+  .lb-extras img { height:80px; border-radius:10px; object-fit:cover; flex-shrink:0; }
+  .lb-metrics { display:flex; gap:18px; font-size:13px; color:var(--text-sec); margin-bottom:16px; }
+  .lb-metrics span { display:flex; align-items:center; gap:5px; }
+  .lb-metrics svg { width:15px; height:15px; fill:currentColor; }
+  .lb-open { display:inline-flex; align-items:center; gap:6px; padding:8px 18px; border-radius:20px; background:var(--glass); border:1px solid var(--glass-border); color:var(--text); font-size:13px; font-family:inherit; cursor:pointer; text-decoration:none; transition:background 0.2s; }
+  .lb-open:hover { background:rgba(255,255,255,0.15); }
+
+  /* ONBOARDING */
+  .onboarding { max-width:480px; margin:100px auto; text-align:center; padding:0 24px; }
+  .onboarding h2 { font-size:26px; margin-bottom:8px; font-weight:700; }
+  .onboarding>p { color:var(--text-sec); font-size:14px; margin-bottom:28px; line-height:1.5; }
+  .drop-zone { border:2px dashed var(--glass-border); border-radius:24px; padding:48px 32px; transition:all 0.25s; cursor:pointer; }
+  .drop-zone:hover,.drop-zone.dragover { border-color:var(--accent); background:rgba(29,155,240,0.04); }
+  .drop-zone svg { width:44px; height:44px; fill:var(--text-dim); margin-bottom:12px; }
+  .drop-zone h3 { font-size:16px; margin-bottom:4px; }
+  .drop-zone p { color:var(--text-dim); font-size:13px; margin:0; }
+  .drop-zone input { display:none; }
+  .onboard-note { color:var(--text-dim); font-size:12px; margin-top:16px; }
+  .onboard-divider { color:var(--text-dim); font-size:12px; margin:20px 0; }
+
+  /* SYNC MODAL */
+  .sync-modal { position:fixed; inset:0; z-index:300; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; }
+  .sync-modal.open { display:flex; }
+  .sync-box { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:32px; max-width:520px; width:90%; text-align:center; }
+  .sync-box h3 { font-size:18px; margin-bottom:10px; }
+  .sync-box p { font-size:13px; color:var(--text-sec); margin-bottom:12px; line-height:1.6; }
+  .sync-code { background:#111; border:1px solid var(--border); border-radius:12px; padding:14px; text-align:left; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:11px; color:var(--accent); line-height:1.5; word-break:break-all; max-height:120px; overflow:auto; margin-bottom:16px; position:relative; cursor:pointer; }
+  .sync-code:hover { border-color:var(--accent); }
+  .sync-code::after { content:'Click to copy'; position:absolute; top:8px; right:8px; font-size:10px; color:var(--text-dim); font-family:inherit; }
+  .sync-steps { text-align:left; font-size:13px; color:var(--text-sec); line-height:1.8; margin-bottom:16px; }
+  .sync-steps b { color:var(--text); }
+
+  .time-row { max-width:1400px; margin:8px auto 0; padding:0 24px; display:flex; gap:6px; align-items:center; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; }
+  .time-row::-webkit-scrollbar { display:none; }
+  .time-select { padding:7px 12px; border-radius:20px; border:1px solid var(--glass-border); background:var(--glass); color:var(--text-sec); font-size:12px; font-family:inherit; font-weight:500; cursor:pointer; outline:none; appearance:none; -webkit-appearance:none; }
+  .time-select:focus { border-color:var(--accent); }
+  .time-select option { background:var(--surface); color:var(--text); }
+  .load-more { text-align:center; padding:24px; }
+  .empty { text-align:center; padding:60px 20px; color:var(--text-sec); }
+  .empty h3 { color:var(--text); font-size:16px; margin-bottom:4px; }
+
+  /* MOBILE */
+  @media(max-width:640px) {
+    .topbar { padding:10px 14px; }
+    .topbar-inner { gap:8px; }
+    .logo { font-size:16px; }
+    .stats-bar { display:none; }
+    .search-wrap { min-width:0; max-width:none; order:10; flex-basis:100%; }
+    .controls { gap:6px; }
+    .controls .pill { padding:6px 10px; font-size:11px; }
+    .filter-row { padding:0 14px; gap:4px; margin-top:8px; }
+    .filter-row .pill { padding:5px 10px; font-size:11px; }
+    #filterContainer { gap:3px; }
+    .sort-group { width:100%; padding-top:2px; gap:3px; }
+    .sort-group .pill { padding:5px 10px; font-size:11px; }
+    .time-row { padding:0 14px; gap:4px; }
+    .time-row .pill { padding:5px 10px; font-size:11px; }
+    .grid-wrap { padding:0 10px 40px; margin-top:10px; }
+    .masonry { column-gap:10px; }
+    .card-body { padding:10px; }
+    .card-text { font-size:12px; max-height:60px; }
+    .card-stats { font-size:10px; gap:8px; }
+    .lightbox { padding:0; }
+    .lb-content { max-width:100%; max-height:100vh; border-radius:0; }
+    .lb-img, .lb-vid { border-radius:0; }
+    .lb-close { top:10px; right:10px; width:36px; height:36px; }
+    .lb-body { padding:14px; }
+    .lb-text { font-size:14px; }
+  }
+  .banner { max-width:1400px; margin:12px auto 0; padding:0 24px; }
+  .banner-box { background:rgba(29,155,240,0.08); border:1px solid rgba(29,155,240,0.2); border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:12px; font-size:13px; color:var(--accent); }
+  .banner-box button { margin-left:auto; flex-shrink:0; }
+  mark { background:rgba(29,155,240,0.25); color:var(--text); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      Bookmarks
+    </div>
+    <div class="stats-bar" id="statsBar" style="display:none">
+      <span><strong id="totalCount">0</strong> saved</span>
+      <span><strong id="authorCount">0</strong> authors</span>
+      <span><strong id="mediaCount">0</strong> media</span>
+    </div>
+    <div class="search-wrap" id="searchWrap" style="display:none">
+      <svg viewBox="0 0 24 24"><path d="M10.25 3.75c-3.59 0-6.5 2.91-6.5 6.5s2.91 6.5 6.5 6.5c1.795 0 3.419-.726 4.596-1.904 1.178-1.177 1.904-2.801 1.904-4.596 0-3.59-2.91-6.5-6.5-6.5zm-8.5 6.5c0-4.694 3.806-8.5 8.5-8.5s8.5 3.806 8.5 8.5c0 1.986-.682 3.815-1.824 5.262l4.781 4.781-1.414 1.414-4.781-4.781c-1.447 1.142-3.276 1.824-5.262 1.824-4.694 0-8.5-3.806-8.5-8.5z"/></svg>
+      <input type="text" id="searchInput" placeholder="Search text, @author, category...">
+    </div>
+    <div class="controls" id="controlsWrap" style="display:none">
+      <button class="pill" onclick="promptLoadJson()">Load JSON</button>
+      <button class="pill pill-accent" onclick="openSyncModal()">
+        <svg style="width:13px;height:13px;fill:#fff;vertical-align:-1px;margin-right:3px" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+        Sync
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="filter-row" id="filterRow" style="display:none">
+  <span class="filter-label">Filter:</span>
+  <div id="filterContainer"></div>
+  <div class="sort-group" id="sortGroup">
+    <button class="pill active" data-sort="newest">Newest</button>
+    <button class="pill" data-sort="popular">Top</button>
+    <button class="pill" data-sort="views">Views</button>
+    <button class="pill" data-sort="media">Media</button>
+    <div class="view-toggle">
+      <button class="view-btn active" id="viewCard" onclick="setView('card')" title="Card view"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm0 10h8v8H3v-8zm10-10h8v8h-8V3zm0 10h8v8h-8v-8z"/></svg></button>
+      <button class="view-btn" id="viewThumb" onclick="setView('thumb')" title="Thumbnail grid"><svg viewBox="0 0 24 24"><path d="M2 4h4v4H2V4zm6 0h4v4H8V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM2 10h4v4H2v-4zm6 0h4v4H8v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM2 16h4v4H2v-4zm6 0h4v4H8v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="time-row" id="timeRow" style="display:none">
+  <span class="filter-label">Time:</span>
+  <div id="timeContainer"></div>
+</div>
+
+<div id="bannerWrap"></div>
+
+<div class="grid-wrap">
+  <div id="resultInfo" style="font-size:12px;color:var(--text-dim);margin-bottom:12px;display:none"></div>
+  <div class="masonry" id="grid"></div>
+</div>
+
+<div id="onboarding" class="onboarding">
+  <h2>Your X Bookmarks, Offline</h2>
+  <p>A visual grid of all your saved tweets. Browse, search, and filter without opening X.</p>
+  <div class="drop-zone" id="dropZone">
+    <svg viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0012 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 000 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+    <h3>Drop x-bookmarks.json here</h3>
+    <p>or click to browse</p>
+    <input type="file" id="fileInput" accept=".json">
+  </div>
+  <div class="onboard-divider">or sync directly from X</div>
+  <button class="pill pill-accent" onclick="openSyncModal()" style="font-size:14px;padding:10px 24px;">
+    <svg style="width:14px;height:14px;fill:#fff;vertical-align:-2px;margin-right:4px" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+    Sync from X
+  </button>
+  <p class="onboard-note">100% local. Your data never leaves your browser.</p>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button class="lb-close" onclick="closeLightbox()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  <div class="lb-content" id="lbContent"></div>
+</div>
+
+<div class="sync-modal" id="syncModal" onclick="if(event.target===this)closeSyncModal()">
+  <div class="sync-box" id="syncBox"></div>
+</div>
+
+<!-- Hidden file input for re-loading JSON -->
+<input type="file" id="hiddenFileInput" accept=".json" style="display:none">
+
+<script>
+// ===== SVG ICONS =====
+const IC = {
+  reply: '<svg viewBox="0 0 24 24"><path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.25-.893 4.306-2.394 5.82l-5.72 5.77c-.39.39-1.03.39-1.42 0l-.9-.9a6.158 6.158 0 01-4.065 1.53c-3.386 0-6.13-2.744-6.13-6.13V10z"/></svg>',
+  rt: '<svg viewBox="0 0 24 24"><path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"/></svg>',
+  like: '<svg viewBox="0 0 24 24"><path d="M20.884 13.19c-1.351 2.48-4.001 5.12-8.379 7.67l-.503.3-.504-.3c-4.379-2.55-7.029-5.19-8.382-7.67-1.36-2.5-1.45-4.92-.334-6.98C3.907 3.85 5.765 2.75 8 2.75c1.592 0 2.99.614 4 1.592 1.01-.978 2.408-1.592 4-1.592 2.235 0 4.093 1.1 5.22 3.46 1.113 2.06 1.024 4.48-.336 6.98z"/></svg>',
+  view: '<svg viewBox="0 0 24 24"><path d="M8.75 21V3h2v18h-2zM18.75 21V8.5h2V21h-2zM13.75 21v-8h2v8h-2zM3.75 21v-4h2v4h-2z"/></svg>',
+  verified: '<svg viewBox="0 0 24 24"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.27 4.8-5.23 1.47 1.36-6.2 6.76z"/></svg>',
+  star: '<svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+};
+
+// ===== STATE =====
+let BK = [], activeFilter = 'All', activeSort = 'newest', searchQuery = '', displayLimit = 80, debounceT = null, activeTimeFilter = null, activeView = 'card';
+
+// ===== STARRED BOOKMARKS (persisted in IndexedDB) =====
+let starredIds = new Set();
+async function loadStarred() {
+  try {
+    const db = await IDB.open();
+    const tx = db.transaction('data', 'readonly');
+    const req = tx.objectStore('data').get('starred');
+    return new Promise(r => { req.onsuccess = () => { const v = req.result; if (Array.isArray(v)) starredIds = new Set(v); r(); }; req.onerror = () => r(); });
+  } catch(e) {}
+}
+function saveStarred() {
+  IDB.open().then(db => {
+    const tx = db.transaction('data', 'readwrite');
+    tx.objectStore('data').put([...starredIds], 'starred');
+  }).catch(() => {});
+}
+function toggleStar(id, evt) {
+  if (evt) { evt.stopPropagation(); evt.preventDefault(); }
+  if (starredIds.has(id)) starredIds.delete(id); else starredIds.add(id);
+  saveStarred();
+  render();
+  // Update lightbox star if open
+  const lbStar = document.getElementById('lbStarBtn');
+  if (lbStar && lbStar.dataset.id === id) {
+    lbStar.className = 'lb-star' + (starredIds.has(id) ? ' starred' : '');
+    lbStar.querySelector('span').textContent = starredIds.has(id) ? 'Starred' : 'Star';
+  }
+}
+
+// ===== IndexedDB PERSISTENCE =====
+const IDB = {
+  _db: null,
+  open() {
+    return new Promise((resolve, reject) => {
+      if (this._db) { resolve(this._db); return; }
+      const req = indexedDB.open('xbookmarks', 1);
+      req.onupgradeneeded = e => { e.target.result.createObjectStore('data'); };
+      req.onsuccess = e => { this._db = e.target.result; resolve(this._db); };
+      req.onerror = e => reject(e);
+    });
+  },
+  async save(raw) {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('data', 'readwrite');
+      tx.objectStore('data').put(raw, 'bookmarks');
+      tx.oncomplete = () => resolve();
+      tx.onerror = e => reject(e);
+    });
+  },
+  async get() {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('data', 'readonly');
+      const req = tx.objectStore('data').get('bookmarks');
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = e => reject(e);
+    });
+  }
+};
+
+// ===== CATEGORIZER =====
+function categorize(text, handle) {
+  const t = ((text||'') + ' ' + (handle||'')).toLowerCase();
+  const c = [];
+
+  // --- Niche / specific (checked first) ---
+  if (/figma|figjam|figma plugin|auto layout|figma token|design token|figma mcp/.test(t)) c.push('Figma');
+  if (/\bui\b|\bux\b|user interface|user experience|usability|interaction design|information architecture|\bia\b.*design|accessibility|\ba11y\b|design system|component library|heuristic|wireframe|prototype|user research|persona|journey map/.test(t)) c.push('UI/UX');
+  if (/\bpaper\b|research paper|arxiv|peer.review|journal|conference paper|acl |emnlp|neurips|icml|iclr|cvpr|abstract.*method|findings.*suggest/.test(t)) c.push('Paper');
+  if (/framer|webflow|spline|rive|lottie|motion design|animation|micro.?interaction|after effects|\bae\b.*motion/.test(t)) c.push('Motion');
+  if (/brand|branding|logo|identity|visual identity|brand.*guide|brand.*system/.test(t)) c.push('Branding');
+  if (/portfolio|showcase|case study|my work|project showcase|design portfolio|work sample|personal site|personal website|my project/.test(t)) c.push('Portfolio');
+  if (/\bfont\b|typeface|typography|type.*design|lettering|variable font|google fonts|inter\b|sf pro/.test(t)) c.push('Type');
+  if (/3d|blender|cinema ?4d|three\.?js|webgl|r3f|react.three|shader|3d.*render/.test(t)) c.push('3D');
+  if (/photo|photograph|camera|lightroom|editing|retouch|unsplash|pexels|visual.*story/.test(t)) c.push('Photo');
+  if (/illustration|illustrat|vector|draw|sketch|artwork|digital art|procreate/.test(t)) c.push('Illustration');
+  if (/\bclaude\b|anthropic|claude code|claude\.ai|sonnet|opus|haiku.*claude|artifacts?.*claude|mcp.*claude|claude.*mcp|claude.*api|anthropic.*sdk/.test(t)) c.push('Claude');
+
+  // --- Broad categories ---
+  if (/\bai\b|gpt|claude|llm|openai|anthropic|\bagent|mcp|copilot|chatgpt|gemini|diffusion|neural|machine learning|\bml\b|deep learning|transformer|prompt|fine.?tun|rag\b|embedding/.test(t)) c.push('AI');
+  if (/design|\bui\b|\bux\b|figma|sketch|prototype|wireframe|typography|visual|layout|icon|color|dribbble|behance/.test(t) && !c.includes('Figma') && !c.includes('UI/UX')) c.push('Design');
+  if (/\bcli\b|github|npm|\bcode\b|developer|open source|\bgit\b|\bapi\b|server|engineer|program|javascript|typescript|python|react|node|docker|backend|frontend|\bcss\b|rust\b|golang|swift|kotlin|supabase|vercel|nextjs|next\.js|tailwind|postgres|database|\bsql\b|redis|aws|deploy/.test(t)) c.push('Dev');
+  if (/startup|founder|ship.*it|launch|saas|revenue|growth|funding|\bvc\b|venture|mvp|business|bootstrap|indie.*hack|solopreneur|mrr\b|arr\b/.test(t)) c.push('Startup');
+  if (/travel|hotel|booking|flight|airport|trip|traveloka|airbnb|nomad|destination|backpack/.test(t)) c.push('Travel');
+  if (/\bjob|hiring|career|resume|interview|salary|remote work|opportunity|recruit|lowongan|loker|apply|vacancy/.test(t)) c.push('Jobs');
+  if (/tips|hack|trick|cara|gampang|tutorial|how to|guide|learn|course|step by step|cheat.?sheet|playbook/.test(t)) c.push('Tips');
+  if (/product|feature|update|platform|\bapp\b|\btool\b|\bbuilt\b|release|shipped|changelog|roadmap/.test(t)) c.push('Product');
+  if (/new tool|just launched|now available|check out|introducing|we.?just|announcing|dropping|here.?is/.test(t)) c.push('New Tools');
+  if (/breaking|news|update|announce|official|confirmed|\bjust in\b|happening now|report|exclusive/.test(t)) c.push('News');
+  if (/\bceo\b|leadership|management|culture|team|hiring.*culture|org.*design|career.*advice|mentorship|senior|staff|principal|manager/.test(t)) c.push('Leadership');
+  if (/\bmoney\b|finance|invest|crypto|bitcoin|\beth\b|web3|nft|defi|blockchain|wallet|trading/.test(t)) c.push('Finance');
+  if (/thread|🧵|1\/|breakdown|deep dive|explained|here.?s what|a thread/.test(t)) c.push('Thread');
+  if (/meme|lol|lmao|😂|🤣|shitpost|joke|funny|humor/.test(t)) c.push('Meme');
+
+  // --- Indonesia: Indonesian language / local context ---
+  if (/\b(gue|gw|gak|nggak|banget|nih|dong|sih|ya kan|wkwk|anjir|cuy|bro|bos|kerjaan|kantor|kerja|jakarta|indonesia|indo|rupiah|idr|wib|ojol|gojek|grab|tokped|shopee|traveloka|bumn|pns|pln|bpjs|dpr|jokowi|prabowo|anies|kementerian|gubernur|gubernur|pemilu|pilkada|lebaran|mudik|ramadan|hari raya|idul|cuti bersama|asn|cpns)\b/.test(t)) c.push('Indonesia');
+
+  if (c.length === 0) c.push('Other');
+  return c;
+}
+
+// ===== HELPERS =====
+function fmt(n) { return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':''+n; }
+function fmtDate(ds) {
+  const d = new Date(ds); if(isNaN(d)) return ds||'';
+  const now = new Date(), h = Math.floor((now-d)/36e5);
+  if(h<1) return 'now'; if(h<24) return h+'h'; if(h<48) return 'Yesterday';
+  const o = {month:'short',day:'numeric'}; if(d.getFullYear()!==now.getFullYear()) o.year='numeric';
+  return d.toLocaleDateString('en-US',o);
+}
+function ini(n) { return ((n||'?').replace(/[^a-zA-Z0-9\s]/g,'').trim()[0]||'?').toUpperCase(); }
+function grad(h) {
+  const p = [['#1d9bf0','#6366f1'],['#f91880','#ec4899'],['#00ba7c','#10b981'],['#ffd600','#f59e0b'],['#7856ff','#8b5cf6'],['#ff6900','#f97316'],['#17bf63','#06b6d4'],['#e44d26','#f06292']];
+  let v=0; for(const c of (h||'x')) v=((v<<5)-v)+c.charCodeAt(0);
+  return `linear-gradient(135deg,${p[Math.abs(v)%p.length].join(',')})`;
+}
+function hl(text, q) {
+  let t = (text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  if(!q) return t;
+  return t.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`,'gi'),'<mark>$1</mark>');
+}
+function imgSrc(url, size) {
+  if (!url) return '';
+  // Twitter image URL format
+  if (url.includes('pbs.twimg.com')) return url + (url.includes('?') ? '&' : '?') + 'format=jpg&name=' + (size||'small');
+  return url;
+}
+
+// ===== CHECK IF DATA HAS MEDIA URLS =====
+function hasMediaUrls(data) {
+  // Check if at least some records have actual media image URLs
+  const sample = data.slice(0, 50);
+  return sample.some(b => {
+    const media = b.md || b.media || [];
+    return media.some(m => (m.u || m.url || '').includes('twimg.com'));
+  });
+}
+
+// ===== NORMALIZE =====
+function normalize(raw) {
+  return raw.map(b => {
+    const text = b.x || b.text || b.tweetText || '';
+    const handle = b.h || b.handle || '';
+    const name = b.n || b.displayName || '';
+    const id = b.i || b.tweetId || '';
+    const date = b.d || b.date || '';
+    const verified = b.v === 1 || b.v === true || b.verified || false;
+    const lang = b.g || b.lang || 'und';
+    const url = b.tweetUrl || (handle ? 'https://x.com/' + handle + '/status/' + id : '');
+    const met = b.m || b.metrics || {};
+    const metrics = { r: met.r||met.replies||0, rt: met.rt||met.reposts||0, l: met.l||met.likes||0, bk: met.b||met.bookmarks||0, v: met.v||met.views||0 };
+
+    // Media: normalize different formats
+    let media = [];
+    if (b.md && Array.isArray(b.md)) {
+      media = b.md.map(m => ({ type: m.t||m.type||'photo', imgUrl: m.u||m.url||'', videoUrl: m.vu||m.videoUrl||null, w: m.w||0, h: m.h||0 }));
+    } else if (b.media && Array.isArray(b.media)) {
+      media = b.media.map(m => typeof m === 'object' ? { type: m.type||m.t||'photo', imgUrl: m.url||m.u||m.media_url_https||'', videoUrl: m.videoUrl||m.vu||null, w: m.w||0, h: m.h||0 } : { type:'photo', imgUrl:'', videoUrl:null, w:0, h:0 });
+    }
+
+    const cats = categorize(text, handle);
+    return { id, text, handle, name, verified, date, lang, url, metrics, media, cats };
+  });
+}
+
+// ===== LOAD =====
+function load(raw, saveToStorage) {
+  BK = normalize(raw);
+  document.getElementById('onboarding').style.display = 'none';
+  ['statsBar','searchWrap','controlsWrap','filterRow','timeRow'].forEach(id => document.getElementById(id).style.display = '');
+  document.getElementById('resultInfo').style.display = '';
+  document.getElementById('totalCount').textContent = BK.length;
+  document.getElementById('authorCount').textContent = new Set(BK.map(b=>b.handle)).size;
+  document.getElementById('mediaCount').textContent = BK.filter(b=>b.media.length>0).length;
+
+  // Check if media URLs are present
+  const hasMedia = BK.some(b => b.media.some(m => m.imgUrl && m.imgUrl.includes('twimg')));
+  if (!hasMedia && BK.filter(b=>b.media.length>0).length > 0) {
+    document.getElementById('bannerWrap').innerHTML = '<div class="banner"><div class="banner-box">Image previews not available in cached data. Load the latest <b>x-bookmarks.json</b> or re-sync to see images.<button class="pill" onclick="promptLoadJson()">Load JSON</button><button class="pill pill-accent" style="margin-left:6px" onclick="openSyncModal()">Sync</button></div></div>';
+  } else {
+    document.getElementById('bannerWrap').innerHTML = '';
+  }
+
+  renderFilters(); renderTimeFilters(); render();
+  if (saveToStorage !== false) {
+    IDB.save(raw).catch(() => {});
+  }
+}
+
+function promptLoadJson() {
+  document.getElementById('hiddenFileInput').click();
+}
+
+// ===== FILTER + SORT =====
+function getFiltered() {
+  let f = [...BK];
+  if (activeFilter === 'Starred') f = f.filter(b => starredIds.has(b.id));
+  else if (activeFilter !== 'All') f = f.filter(b => b.cats.includes(activeFilter));
+  if (activeTimeFilter) {
+    f = f.filter(b => {
+      const d = new Date(b.date); if (isNaN(d)) return false;
+      if (activeTimeFilter.type === 'year') return String(d.getFullYear()) === activeTimeFilter.value;
+      if (activeTimeFilter.type === 'month') {
+        const ym = d.getFullYear() + '-' + String(d.getMonth()).padStart(2,'0');
+        return ym === activeTimeFilter.value;
+      }
+      if (activeTimeFilter.type === 'quick') {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (activeTimeFilter.value === 'today') return d >= today;
+        if (activeTimeFilter.value === 'thisweek') {
+          const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
+          return d >= weekStart;
+        }
+        if (activeTimeFilter.value === 'lastweek') {
+          const thisWeekStart = new Date(today); thisWeekStart.setDate(today.getDate() - today.getDay());
+          const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+          return d >= lastWeekStart && d < thisWeekStart;
+        }
+      }
+      return true;
+    });
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    f = f.filter(b => b.text.toLowerCase().includes(q) || b.handle.toLowerCase().includes(q) || b.name.toLowerCase().includes(q) || b.cats.some(c=>c.toLowerCase().includes(q)));
+  }
+  switch(activeSort) {
+    case 'newest': f.sort((a,b)=>new Date(b.date)-new Date(a.date)); break;
+    case 'oldest': f.sort((a,b)=>new Date(a.date)-new Date(b.date)); break;
+    case 'popular': f.sort((a,b)=>b.metrics.l-a.metrics.l); break;
+    case 'views': f.sort((a,b)=>b.metrics.v-a.metrics.v); break;
+    case 'media': f = f.filter(b=>b.media.length>0 && b.media[0].imgUrl).sort((a,b)=>new Date(b.date)-new Date(a.date)); break;
+  }
+  return f;
+}
+
+// ===== RENDER =====
+function renderFilters() {
+  const cats = new Map(); cats.set('All', BK.length);
+  const starCount = BK.filter(b => starredIds.has(b.id)).length;
+  if (starCount > 0) cats.set('Starred', starCount);
+  BK.forEach(b => b.cats.forEach(c => cats.set(c, (cats.get(c)||0)+1)));
+  // Sort: All first, Starred second, Other last, broad before niche
+  const broad = ['AI','Design','Dev','Product','Startup','Travel','Jobs','Tips','News','New Tools','Indonesia','Finance','Leadership','Thread','Meme'];
+  const niche = ['Figma','UI/UX','Claude','Portfolio','Paper','Motion','Branding','Type','3D','Photo','Illustration'];
+  const order = ['All', 'Starred', ...broad, ...niche, 'Other'];
+  const sorted = [...cats.entries()].sort((a,b) => {
+    const ai = order.indexOf(a[0]), bi = order.indexOf(b[0]);
+    return (ai===-1?99:ai) - (bi===-1?99:bi);
+  });
+  const el = document.getElementById('filterContainer');
+  el.innerHTML = '';
+  sorted.forEach(([cat, n]) => {
+    if (n === 0) return; // skip empty categories
+    const btn = document.createElement('button');
+    btn.className = 'pill' + (activeFilter===cat?' active':'') + (cat==='Starred'?' pill-starred':'');
+    btn.innerHTML = (cat==='Starred'?IC.star+' ':'')+cat + ' <span style="opacity:.6">' + n + '</span>';
+    if (cat==='Starred') btn.querySelector('svg').style.cssText='width:12px;height:12px;fill:#fbbf24;vertical-align:-1px;margin-right:2px';
+    btn.onclick = () => { activeFilter=cat; displayLimit=80; renderFilters(); render(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderTimeFilters() {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // Collect all year-months from bookmarks
+  const ym = new Map();
+  BK.forEach(b => {
+    const d = new Date(b.date); if (isNaN(d)) return;
+    const y = d.getFullYear(), m = d.getMonth();
+    const key = y + '-' + String(m).padStart(2,'0');
+    ym.set(key, (ym.get(key)||0) + 1);
+  });
+  const sorted = [...ym.entries()].sort((a,b) => b[0].localeCompare(a[0]));
+  if (sorted.length === 0) return;
+
+  // Get unique years
+  const years = [...new Set(sorted.map(([k]) => k.split('-')[0]))].sort((a,b) => b-a);
+
+  const el = document.getElementById('timeContainer');
+  let html = '<button class="pill' + (!activeTimeFilter ? ' active' : '') + '" onclick="activeTimeFilter=null;displayLimit=80;renderTimeFilters();render()">All time</button>';
+
+  // Quick time filters
+  const quickFilters = [
+    { label: 'Today', type: 'quick', value: 'today' },
+    { label: 'This week', type: 'quick', value: 'thisweek' },
+    { label: 'Last week', type: 'quick', value: 'lastweek' },
+  ];
+  quickFilters.forEach(q => {
+    const isActive = activeTimeFilter && activeTimeFilter.type === 'quick' && activeTimeFilter.value === q.value;
+    html += '<button class="pill' + (isActive ? ' active' : '') + '" onclick="setTimeFilter(\'' + q.type + '\',\'' + q.value + '\')">' + q.label + '</button>';
+  });
+
+  // Year pills (on mobile: show 3 recent as pills, rest in dropdown)
+  const isMobile = window.innerWidth <= 640;
+  const pillYears = isMobile ? years.slice(0, 3) : years;
+  const dropdownYears = isMobile ? years.slice(3) : [];
+
+  pillYears.forEach(y => {
+    const isYear = activeTimeFilter && activeTimeFilter.type === 'year' && activeTimeFilter.value === y;
+    html += '<button class="pill' + (isYear ? ' active' : '') + '" onclick="setTimeFilter(\'year\',\'' + y + '\')">' + y + '</button>';
+  });
+
+  if (dropdownYears.length > 0) {
+    const selOlderYear = activeTimeFilter && activeTimeFilter.type === 'year' && dropdownYears.includes(activeTimeFilter.value) ? activeTimeFilter.value : '';
+    html += '<select class="time-select" onchange="if(this.value){setTimeFilter(\'year\',this.value)}">';
+    html += '<option value=""' + (!selOlderYear ? ' selected' : '') + '>Older...</option>';
+    dropdownYears.forEach(y => {
+      html += '<option value="' + y + '"' + (selOlderYear === y ? ' selected' : '') + '>' + y + '</option>';
+    });
+    html += '</select>';
+  }
+
+  // Month select (only show if a year is selected)
+  if (activeTimeFilter && activeTimeFilter.type === 'year') {
+    const selYear = activeTimeFilter.value;
+    const monthsInYear = sorted.filter(([k]) => k.startsWith(selYear)).map(([k, n]) => {
+      const m = parseInt(k.split('-')[1]);
+      return { m, label: months[m], n };
+    });
+    if (monthsInYear.length > 1) {
+      html += '<select class="time-select" onchange="if(this.value){setTimeFilter(\'month\',this.value)}else{setTimeFilter(\'year\',\'' + selYear + '\')}">';
+      html += '<option value="">All months</option>';
+      monthsInYear.forEach(({ m, label, n }) => {
+        const val = selYear + '-' + String(m).padStart(2,'0');
+        const sel = activeTimeFilter.type === 'month' && activeTimeFilter.value === val ? ' selected' : '';
+        html += '<option value="' + val + '"' + sel + '>' + label + ' (' + n + ')</option>';
+      });
+      html += '</select>';
+    }
+  } else if (activeTimeFilter && activeTimeFilter.type === 'month') {
+    // Keep month select visible
+    const selYear = activeTimeFilter.value.split('-')[0];
+    const monthsInYear = sorted.filter(([k]) => k.startsWith(selYear)).map(([k, n]) => {
+      const m = parseInt(k.split('-')[1]);
+      return { m, label: months[m], n };
+    });
+    html += '<select class="time-select" onchange="if(this.value){setTimeFilter(\'month\',this.value)}else{setTimeFilter(\'year\',\'' + selYear + '\')}">';
+    html += '<option value="">All months</option>';
+    monthsInYear.forEach(({ m, label, n }) => {
+      const val = selYear + '-' + String(m).padStart(2,'0');
+      const sel = activeTimeFilter.value === val ? ' selected' : '';
+      html += '<option value="' + val + '"' + sel + '>' + label + ' (' + n + ')</option>';
+    });
+    html += '</select>';
+  }
+
+  el.innerHTML = html;
+}
+
+function setTimeFilter(type, value) {
+  activeTimeFilter = { type, value };
+  displayLimit = 80;
+  renderTimeFilters();
+  render();
+}
+
+function cardHTML(b, idx) {
+  const img = b.media[0];
+  const hasImg = img && img.imgUrl;
+  const isVideo = img && (img.type === 'video' || img.type === 'animated_gif');
+  const needsFade = b.text.length > 160;
+
+  let mediaHTML = '';
+  if (hasImg && isVideo && img.videoUrl) {
+    // Video/GIF with autoplay on hover
+    mediaHTML = '<div class="card-media">'
+      + '<video class="card-video" src="' + img.videoUrl + '" poster="' + imgSrc(img.imgUrl,'medium') + '" muted loop playsinline preload="none" onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"></video>'
+      + '<div class="card-play"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:#fff"><path d="M8 5v14l11-7z"/></svg></div>'
+      + (b.media.length > 1 ? '<div class="card-multi">+' + (b.media.length-1) + '</div>' : '')
+      + '</div>';
+  } else if (hasImg) {
+    mediaHTML = '<div class="card-media">'
+      + '<img class="card-img" src="' + imgSrc(img.imgUrl,'medium') + '" loading="lazy" decoding="async" alt="" onerror="this.parentElement.style.display=\'none\'">'
+      + (b.media.length > 1 ? '<div class="card-multi">+' + (b.media.length-1) + '</div>' : '')
+      + '</div>';
+  }
+
+  const mediaTag = b.media.length > 0 && hasImg
+    ? '<span class="tag tag-media">' + (isVideo ? (img.type==='animated_gif'?'GIF':'Video') : 'Photo') + (b.media.length>1?' +'+b.media.length:'') + '</span>'
+    : '';
+
+  const isStar = starredIds.has(b.id);
+  return '<div class="card" onclick="openLb(' + idx + ')" data-idx="' + idx + '">'
+    + '<button class="card-star' + (isStar?' starred':'') + '" onclick="toggleStar(\'' + b.id + '\',event)">' + IC.star + '</button>'
+    + mediaHTML
+    + '<div class="card-body">'
+    + '<div class="card-author"><div class="card-avatar" style="background:' + grad(b.handle) + '">' + ini(b.name) + '</div><div><div class="card-name">' + hl(b.name, searchQuery) + ' ' + (b.verified?IC.verified:'') + '</div><div class="card-handle">@' + b.handle + '</div></div></div>'
+    + (b.text ? '<div class="card-text">' + hl(b.text, searchQuery) + (needsFade?'<div class="card-text-fade"></div>':'') + '</div>' : '')
+    + '<div class="card-tags">' + b.cats.map(c=>'<span class="tag tag-cat tag-'+c.toLowerCase().replace(/[\s\/]/g,'')+'">'+c+'</span>').join('') + mediaTag + '</div>'
+    + '<div class="card-stats"><span>' + IC.like + ' ' + fmt(b.metrics.l) + '</span><span>' + IC.rt + ' ' + fmt(b.metrics.rt) + '</span><span>' + IC.view + ' ' + fmt(b.metrics.v) + '</span><span style="margin-left:auto">' + fmtDate(b.date) + '</span></div>'
+    + '</div></div>';
+}
+
+function thumbHTML(b, idx) {
+  const img = b.media[0];
+  if (!img || !img.imgUrl) return '';
+  const isVideo = img.type === 'video' || img.type === 'animated_gif';
+  const isStar = starredIds.has(b.id);
+  return '<div class="thumb" onclick="openLb(' + idx + ')">'
+    + '<img src="' + imgSrc(img.imgUrl, 'small') + '" loading="lazy" decoding="async" alt="" onerror="this.parentElement.style.display=\'none\'">'
+    + (isStar ? '<div class="thumb-star">' + IC.star + '</div>' : '')
+    + (isVideo ? '<div class="thumb-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>' : '')
+    + '<div class="thumb-overlay"><div class="thumb-stats"><span>' + IC.like + ' ' + fmt(b.metrics.l) + '</span><span>' + IC.view + ' ' + fmt(b.metrics.v) + '</span></div></div>'
+    + '</div>';
+}
+
+function setView(v) {
+  activeView = v;
+  document.getElementById('viewCard').className = 'view-btn' + (v==='card'?' active':'');
+  document.getElementById('viewThumb').className = 'view-btn' + (v==='thumb'?' active':'');
+  displayLimit = v === 'thumb' ? 200 : 80;
+  render();
+}
+
+function render() {
+  const filtered = getFiltered();
+  window.__filtered = filtered;
+  const grid = document.getElementById('grid');
+
+  if (activeView === 'thumb') {
+    // Thumbnail grid: only show items with media
+    const withMedia = filtered.filter(b => b.media.length > 0 && b.media[0].imgUrl);
+    // Re-index so openLb works correctly — store full filtered list but render media-only
+    window.__filtered = withMedia;
+    document.getElementById('resultInfo').textContent = withMedia.length + ' media items' + (withMedia.length !== filtered.length ? ' (of ' + filtered.length + ')' : '');
+    if (!withMedia.length) { grid.innerHTML = '<div class="empty"><h3>No media found</h3><p>Try a different filter</p></div>'; grid.className = 'masonry'; return; }
+    const vis = withMedia.slice(0, displayLimit);
+    let html = vis.map((b,i) => thumbHTML(b, i)).join('');
+    if (withMedia.length > displayLimit) {
+      html += '<div class="load-more" style="grid-column:1/-1"><button class="pill" onclick="displayLimit+=200;render()">Show more (' + (withMedia.length-displayLimit) + ' remaining)</button></div>';
+    }
+    grid.className = 'thumb-grid';
+    grid.innerHTML = html;
+    // Infinite scroll for thumbnail view
+    if (!window.__thumbScroll) {
+      window.__thumbScroll = true;
+      window.addEventListener('scroll', () => {
+        if (activeView !== 'thumb') return;
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 600) {
+          const withMedia = window.__filtered;
+          if (displayLimit < withMedia.length) { displayLimit += 200; render(); }
+        }
+      });
+    }
+  } else {
+    document.getElementById('resultInfo').textContent = filtered.length === BK.length ? filtered.length + ' bookmarks' : filtered.length + ' of ' + BK.length;
+    grid.className = 'masonry';
+    if (!filtered.length) { grid.innerHTML = '<div class="empty"><h3>No bookmarks found</h3><p>Try a different search or filter</p></div>'; return; }
+    const vis = filtered.slice(0, displayLimit);
+    let html = vis.map((b,i) => cardHTML(b, i)).join('');
+    if (filtered.length > displayLimit) {
+      html += '<div class="load-more"><button class="pill" onclick="displayLimit+=80;render()">Show more (' + (filtered.length-displayLimit) + ' remaining)</button></div>';
+    }
+    grid.innerHTML = html;
+  }
+}
+
+// ===== LIGHTBOX =====
+function openLb(idx) {
+  const b = window.__filtered[idx]; if(!b) return;
+  const img = b.media[0];
+  const hasImg = img && img.imgUrl;
+  const isVideo = img && (img.type === 'video' || img.type === 'animated_gif');
+
+  let mainMedia = '';
+  if (hasImg && isVideo && img.videoUrl) {
+    mainMedia = '<video class="lb-vid" src="' + img.videoUrl + '" poster="' + imgSrc(img.imgUrl,'large') + '" controls autoplay muted loop playsinline></video>';
+  } else if (hasImg) {
+    mainMedia = '<img class="lb-img" src="' + imgSrc(img.imgUrl,'large') + '" alt="">';
+  }
+
+  let extras = '';
+  if (b.media.length > 1) {
+    extras = '<div class="lb-extras">' + b.media.slice(1).map(m =>
+      m.imgUrl ? '<img src="' + imgSrc(m.imgUrl,'small') + '" onerror="this.style.display=\'none\'">' : ''
+    ).join('') + '</div>';
+  }
+
+  document.getElementById('lbContent').innerHTML = mainMedia
+    + '<div class="lb-body">'
+    + '<div class="lb-author"><div class="lb-avatar" style="background:' + grad(b.handle) + '">' + ini(b.name) + '</div><div><div class="lb-name">' + b.name + ' ' + (b.verified?IC.verified:'') + '</div><div class="lb-handle">@' + b.handle + ' &middot; ' + fmtDate(b.date) + '</div></div></div>'
+    + '<div class="lb-text">' + hl(b.text, searchQuery) + '</div>'
+    + extras
+    + '<div class="lb-metrics"><span>' + IC.reply + ' ' + fmt(b.metrics.r) + '</span><span>' + IC.rt + ' ' + fmt(b.metrics.rt) + '</span><span>' + IC.like + ' ' + fmt(b.metrics.l) + '</span><span>' + IC.view + ' ' + fmt(b.metrics.v) + '</span></div>'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    + '<button class="lb-star' + (starredIds.has(b.id) ? ' starred' : '') + '" id="lbStarBtn" data-id="' + b.id + '" onclick="toggleStar(\'' + b.id + '\',event)">' + IC.star + ' <span>' + (starredIds.has(b.id) ? 'Starred' : 'Star') + '</span></button>'
+    + '<a class="lb-open" href="' + b.url + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="15 3 21 3 21 9" stroke="currentColor" stroke-width="2" fill="none"/><line x1="10" y1="14" x2="21" y2="3" stroke="currentColor" stroke-width="2"/></svg> Open on X</a>'
+    + '</div>'
+    + '</div>';
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+  // Pause any playing video
+  const v = document.querySelector('.lb-vid'); if(v) v.pause();
+}
+
+// ===== SYNC (bookmarklet approach) =====
+function getSyncScript() {
+  return `javascript:void((async()=>{const B='AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',Q='YCrjINs3IPbkSl5FQf_tpA',F={"rweb_video_screen_enabled":false,"profile_label_improvements_pcf_label_in_post_enabled":true,"responsive_web_profile_redirect_enabled":false,"rweb_tipjar_consumption_enabled":false,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":true,"responsive_web_jetfuel_frame":true,"responsive_web_grok_share_attachment_enabled":true,"responsive_web_grok_annotations_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"content_disclosure_indicator_enabled":true,"content_disclosure_ai_generated_indicator_enabled":true,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":true,"post_ctas_fetch_enabled":true,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":false,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_grok_imagine_annotation_enabled":true,"responsive_web_grok_community_note_auto_translation_is_enabled":false,"responsive_web_enhance_cards_enabled":false};const c=document.cookie.match(/ct0=([^;]+)/)?.[1];if(!c){alert('Not logged into X');return}const all=[];let cur=null,pg=0;const d=document.createElement('div');d.style.cssText='position:fixed;top:20px;right:20px;z-index:99999;background:#000;color:#1d9bf0;padding:16px 24px;border-radius:16px;font:600 14px system-ui;border:1px solid #333';d.textContent='Syncing...';document.body.appendChild(d);while(pg<200){const v={count:20,includePromotedContent:false};if(cur)v.cursor=cur;const u='https://x.com/i/api/graphql/'+Q+'/Bookmarks?variables='+encodeURIComponent(JSON.stringify(v))+'&features='+encodeURIComponent(JSON.stringify(F));const r=await fetch(u,{headers:{'authorization':'Bearer '+decodeURIComponent(B),'x-csrf-token':c,'x-twitter-auth-type':'OAuth2Session','x-twitter-active-user':'yes'},credentials:'include'});if(r.status===429){d.textContent='Rate limited, waiting 60s... ('+all.length+')';await new Promise(r=>setTimeout(r,60000));continue}if(!r.ok)break;const j=await r.json();const e=j?.data?.bookmark_timeline_v2?.timeline?.instructions?.flatMap(i=>i.entries||[])||[];let nc=null,nn=0;for(const en of e){if(en.entryId?.startsWith('tweet-')){const tw=en.content?.itemContent?.tweet_results?.result;if(tw){const t=tw.tweet||tw;const l=t.legacy||{};const ur=t.core?.user_results?.result;const uc=ur?.core||{};all.push({i:l.id_str||t.rest_id||'',x:t.note_tweet?.note_tweet_results?.result?.text||l.full_text||'',h:uc.screen_name||'',n:uc.name||'',v:ur?.is_blue_verified?1:0,d:l.created_at||'',g:l.lang||'und',m:{r:l.reply_count||0,rt:l.retweet_count||0,l:l.favorite_count||0,b:l.bookmark_count||0,v:parseInt(t.views?.count)||0},md:(l.extended_entities?.media||l.entities?.media||[]).map(m=>({t:m.type,u:m.media_url_https,w:m.original_info?.width||0,h:m.original_info?.height||0,vu:m.video_info?.variants?.filter(v=>v.content_type==='video/mp4').sort((a,b)=>(b.bitrate||0)-(a.bitrate||0))?.[0]?.url||null})),u:(l.entities?.urls||[]).map(u=>u.expanded_url).filter(Boolean)});nn++}}if(en.entryId?.startsWith('cursor-bottom'))nc=en.content?.value}pg++;d.textContent='Syncing... '+all.length+' bookmarks (page '+pg+')';if(!nc||nn===0)break;cur=nc;await new Promise(r=>setTimeout(r,800))}d.textContent='Done! '+all.length+' bookmarks. Downloading...';const blob=new Blob([JSON.stringify(all)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='x-bookmarks.json';a.click();setTimeout(()=>d.remove(),3000)})())`;
+}
+
+function openSyncModal() {
+  const box = document.getElementById('syncBox');
+  const script = getSyncScript();
+  box.innerHTML = '<h3>Sync Bookmarks from X</h3>'
+    + '<div style="display:flex;gap:8px;margin-bottom:16px">'
+    + '<button class="pill active" id="tabExt" onclick="showSyncTab(\'ext\')">Chrome Extension</button>'
+    + '<button class="pill" id="tabManual" onclick="showSyncTab(\'manual\')">Manual (Console)</button>'
+    + '</div>'
+    + '<div id="syncTabExt">'
+    + '<p style="margin-bottom:12px">Install the <b>X Bookmarks Sync</b> extension for one-click syncing:</p>'
+    + '<div class="sync-steps">'
+    + '<b>Step 1:</b> Open <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px">chrome://extensions</code> in Chrome<br>'
+    + '<b>Step 2:</b> Enable <b>Developer mode</b> (toggle in top-right)<br>'
+    + '<b>Step 3:</b> Click <b>Load unpacked</b> → select the <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px">x-bookmarks-ext</code> folder<br>'
+    + '<b>Step 4:</b> Go to <a href="https://x.com" target="_blank" style="color:var(--accent)">x.com</a> — you\'ll see a sync button (bottom-right)<br>'
+    + '<b>Step 5:</b> Click it → Sync → auto-downloads JSON → drag it here'
+    + '</div>'
+    + '<p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:12px">One-time setup. After that, just click the button on x.com whenever you want to refresh.</p>'
+    + '</div>'
+    + '<div id="syncTabManual" style="display:none">'
+    + '<p>Run this script in Chrome DevTools console while on x.com:</p>'
+    + '<div class="sync-steps">'
+    + '<b>Step 1:</b> Open <a href="https://x.com" target="_blank" style="color:var(--accent)">x.com</a> (make sure you\'re logged in)<br>'
+    + '<b>Step 2:</b> Press <b>F12</b> → <b>Console</b> tab<br>'
+    + '<b>Step 3:</b> Paste the script below and press Enter<br>'
+    + '<b>Step 4:</b> Wait → auto-downloads <b>x-bookmarks.json</b><br>'
+    + '<b>Step 5:</b> Come back here and load the JSON file'
+    + '</div>'
+    + '<div class="sync-code" id="syncCode" onclick="copySyncScript()">' + script.replace(/^javascript:void\(/, '').replace(/\)$/, '') + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center">'
+    + '<button class="pill pill-accent" onclick="copySyncScript()">Copy Script</button>'
+    + '</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center;margin-top:12px">'
+    + '<button class="pill" onclick="closeSyncModal()">Close</button>'
+    + '</div>';
+  document.getElementById('syncModal').classList.add('open');
+}
+
+function showSyncTab(tab) {
+  document.getElementById('syncTabExt').style.display = tab === 'ext' ? '' : 'none';
+  document.getElementById('syncTabManual').style.display = tab === 'manual' ? '' : 'none';
+  document.getElementById('tabExt').className = 'pill' + (tab === 'ext' ? ' active' : '');
+  document.getElementById('tabManual').className = 'pill' + (tab === 'manual' ? ' active' : '');
+}
+
+function copySyncScript() {
+  const script = getSyncScript().replace(/^javascript:void\(/, '').replace(/\)$/, '');
+  navigator.clipboard.writeText(script).then(() => {
+    const btn = document.querySelector('.sync-box .pill-accent');
+    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy Script', 2000); }
+  });
+}
+
+function closeSyncModal() {
+  document.getElementById('syncModal').classList.remove('open');
+}
+
+// ===== FILE LOADING =====
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const hiddenInput = document.getElementById('hiddenFileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); if(e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if(e.target.files[0]) readFile(e.target.files[0]); });
+hiddenInput.addEventListener('change', e => { if(e.target.files[0]) readFile(e.target.files[0]); });
+
+// Also support drag-and-drop anywhere on the page
+document.body.addEventListener('dragover', e => e.preventDefault());
+document.body.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer?.files[0];
+  if (file && file.name.endsWith('.json')) readFile(file);
+});
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) { alert('Invalid JSON: expected an array.'); return; }
+
+      // If we already have bookmarks loaded, merge instead of replace
+      if (BK.length > 0) {
+        const existingIds = new Set(BK.map(b => b.id));
+        IDB.get().then(rawExisting => {
+          rawExisting = rawExisting || [];
+          let addedCount = 0;
+          const newItems = [];
+          for (const item of data) {
+            const id = item.i || item.id || item.tweetId || '';
+            if (!existingIds.has(id)) {
+              newItems.push(item);
+              addedCount++;
+            }
+          }
+          if (addedCount === 0 && data.length <= BK.length) {
+            setStatus('All bookmarks already loaded — nothing new to add!');
+            return;
+          }
+          if (addedCount === 0 && data.length > BK.length) {
+            // Full re-import with more data — replace
+            load(data);
+            return;
+          }
+          const merged = [...newItems, ...rawExisting];
+          load(merged);
+          setStatus('Merged ' + addedCount + ' new bookmarks! Total: ' + BK.length);
+        });
+      } else {
+        load(data);
+      }
+    } catch(err) { alert('Could not parse JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+function setStatus(msg) {
+  const el = document.getElementById('bannerWrap');
+  if (el) el.innerHTML = '<div class="banner"><div class="banner-box">' + msg + '</div></div>';
+  setTimeout(() => { if (el) el.innerHTML = ''; }, 5000);
+}
+
+// ===== SEARCH =====
+document.getElementById('searchInput').addEventListener('input', e => {
+  clearTimeout(debounceT);
+  debounceT = setTimeout(() => { searchQuery = e.target.value.trim(); displayLimit = 80; render(); }, 200);
+});
+
+// ===== SORT =====
+document.querySelectorAll('#sortGroup .pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#sortGroup .pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeSort = btn.dataset.sort;
+    displayLimit = 80;
+    render();
+  });
+});
+
+// ===== KEYBOARD =====
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); document.getElementById('searchInput')?.focus(); }
+  if (e.key === 'Escape') { closeLightbox(); closeSyncModal(); document.getElementById('searchInput')?.blur(); }
+});
+
+// ===== AUTO-LOAD from IndexedDB =====
+loadStarred().then(() => {
+  IDB.get().then(d => {
+    if (d && Array.isArray(d) && d.length) load(d, false);
+  }).catch(() => {
+    try {
+      const saved = localStorage.getItem('xbk2');
+      if (saved) { const d = JSON.parse(saved); if(Array.isArray(d) && d.length) { load(d, true); localStorage.removeItem('xbk2'); } }
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>

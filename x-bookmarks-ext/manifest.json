@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "X Bookmarks Sync",
+  "version": "1.2.0",
+  "description": "One-click sync of your X/Twitter bookmarks to x-bookmarks.html",
+  "permissions": ["cookies", "activeTab"],
+  "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
+  "icons": {
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
