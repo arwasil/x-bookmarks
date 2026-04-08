@@ -333,26 +333,69 @@ const IC = {
 // ===== STATE =====
 let BK = [], activeFilter = 'All', activeSort = 'newest', searchQuery = '', displayLimit = 80, debounceT = null, activeTimeFilter = null, activeView = 'card';
 
-// ===== STARRED BOOKMARKS (persisted in IndexedDB) =====
+// ===== STARRED BOOKMARKS (Supabase-synced) =====
+const SUPA_URL = 'https://jnzbvmfsdqjngpzewfzq.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuemJ2bWZzZHFqbmdwemV3ZnpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2Mjc2MTAsImV4cCI6MjA5MTIwMzYxMH0.Mc62za86DJskzz9ml0yxQzgyNaYe3GuIQudF9TK6HIE';
+const supaHeaders = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+
 let starredIds = new Set();
+
 async function loadStarred() {
+  // Load from local IDB first (instant)
   try {
     const db = await IDB.open();
     const tx = db.transaction('data', 'readonly');
     const req = tx.objectStore('data').get('starred');
-    return new Promise(r => { req.onsuccess = () => { const v = req.result; if (Array.isArray(v)) starredIds = new Set(v); r(); }; req.onerror = () => r(); });
+    await new Promise(r => { req.onsuccess = () => { const v = req.result; if (Array.isArray(v)) starredIds = new Set(v); r(); }; req.onerror = () => r(); });
+  } catch(e) {}
+  // Then sync from Supabase (async, merges)
+  syncStarredFromCloud();
+}
+
+async function syncStarredFromCloud() {
+  try {
+    const resp = await fetch(SUPA_URL + '/rest/v1/starred?select=tweet_id', { headers: supaHeaders });
+    if (!resp.ok) return;
+    const rows = await resp.json();
+    const cloudIds = new Set(rows.map(r => r.tweet_id));
+    // Merge: union of local + cloud
+    let changed = false;
+    cloudIds.forEach(id => { if (!starredIds.has(id)) { starredIds.add(id); changed = true; } });
+    // Push any local-only stars to cloud
+    const localOnly = [...starredIds].filter(id => !cloudIds.has(id));
+    if (localOnly.length > 0) {
+      fetch(SUPA_URL + '/rest/v1/starred', {
+        method: 'POST', headers: { ...supaHeaders, 'Prefer': 'resolution=ignore-duplicates' },
+        body: JSON.stringify(localOnly.map(id => ({ tweet_id: id })))
+      }).catch(() => {});
+    }
+    if (changed) { saveStarredLocal(); if (BK.length) { renderFilters(); render(); } }
   } catch(e) {}
 }
-function saveStarred() {
+
+function saveStarredLocal() {
   IDB.open().then(db => {
     const tx = db.transaction('data', 'readwrite');
     tx.objectStore('data').put([...starredIds], 'starred');
   }).catch(() => {});
 }
+
 function toggleStar(id, evt) {
   if (evt) { evt.stopPropagation(); evt.preventDefault(); }
-  if (starredIds.has(id)) starredIds.delete(id); else starredIds.add(id);
-  saveStarred();
+  const adding = !starredIds.has(id);
+  if (adding) starredIds.add(id); else starredIds.delete(id);
+  saveStarredLocal();
+  // Sync to Supabase
+  if (adding) {
+    fetch(SUPA_URL + '/rest/v1/starred', {
+      method: 'POST', headers: { ...supaHeaders, 'Prefer': 'resolution=ignore-duplicates' },
+      body: JSON.stringify({ tweet_id: id })
+    }).catch(() => {});
+  } else {
+    fetch(SUPA_URL + '/rest/v1/starred?tweet_id=eq.' + id, {
+      method: 'DELETE', headers: supaHeaders
+    }).catch(() => {});
+  }
   render();
   // Update lightbox star if open
   const lbStar = document.getElementById('lbStarBtn');
@@ -1033,12 +1076,6 @@ document.addEventListener('keydown', e => {
 // ===== AUTO-LOAD (runs after bookmarks-data.js if present) =====
 function autoLoad() {
   loadStarred().then(() => {
-    // Merge bundled starred with local starred (union of both)
-    if (window.__BUNDLED_STARRED && window.__BUNDLED_STARRED.length) {
-      let changed = false;
-      window.__BUNDLED_STARRED.forEach(id => { if (!starredIds.has(id)) { starredIds.add(id); changed = true; } });
-      if (changed) saveStarred();
-    }
     IDB.get().then(d => {
       if (d && Array.isArray(d) && d.length) { load(d, false); return; }
       if (window.__BUNDLED_BOOKMARKS && window.__BUNDLED_BOOKMARKS.length) {
