@@ -250,6 +250,11 @@
     </div>
     <div class="controls" id="controlsWrap" style="display:none">
       <button class="pill" onclick="promptLoadJson()">Load JSON</button>
+      <button class="pill" onclick="exportForClaude()">Export for Claude</button>
+      <button class="pill" onclick="exportForDeploy()">
+        <svg style="width:12px;height:12px;fill:currentColor;vertical-align:-1px;margin-right:3px" viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0012 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 000 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        Deploy
+      </button>
       <button class="pill pill-accent" onclick="openSyncModal()">
         <svg style="width:13px;height:13px;fill:#fff;vertical-align:-1px;margin-right:3px" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
         Sync
@@ -962,6 +967,46 @@ function setStatus(msg) {
   setTimeout(() => { if (el) el.innerHTML = ''; }, 5000);
 }
 
+// ===== EXPORT FOR CLAUDE =====
+function exportForClaude() {
+  if (!BK.length) return;
+  // Compact format: only what Claude needs for analysis
+  const exported = BK.map(b => ({
+    text: b.text,
+    author: '@' + b.handle + (b.name ? ' (' + b.name + ')' : ''),
+    date: b.date,
+    categories: b.cats,
+    likes: b.metrics.l,
+    retweets: b.metrics.rt,
+    views: b.metrics.v,
+    url: b.url,
+    starred: starredIds.has(b.id),
+    hasMedia: b.media.length > 0,
+  }));
+  const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'bookmarks-for-claude.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  setStatus('Exported ' + exported.length + ' bookmarks. Move the file to your project folder, then ask Claude to read it.');
+}
+
+function exportForDeploy() {
+  if (!BK.length) return;
+  IDB.get().then(raw => {
+    raw = raw || [];
+    const payload = { bookmarks: raw, starred: [...starredIds] };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'x-bookmarks-deploy.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    setStatus('Exported ' + raw.length + ' bookmarks + ' + starredIds.size + ' starred. Run ./bundle.sh to deploy.');
+  });
+}
+
 // ===== SEARCH =====
 document.getElementById('searchInput').addEventListener('input', e => {
   clearTimeout(debounceT);
@@ -985,17 +1030,32 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeLightbox(); closeSyncModal(); document.getElementById('searchInput')?.blur(); }
 });
 
-// ===== AUTO-LOAD from IndexedDB =====
-loadStarred().then(() => {
-  IDB.get().then(d => {
-    if (d && Array.isArray(d) && d.length) load(d, false);
-  }).catch(() => {
-    try {
-      const saved = localStorage.getItem('xbk2');
-      if (saved) { const d = JSON.parse(saved); if(Array.isArray(d) && d.length) { load(d, true); localStorage.removeItem('xbk2'); } }
-    } catch(e) {}
+// ===== AUTO-LOAD (runs after bookmarks-data.js if present) =====
+function autoLoad() {
+  loadStarred().then(() => {
+    // Merge bundled starred with local starred (union of both)
+    if (window.__BUNDLED_STARRED && window.__BUNDLED_STARRED.length) {
+      let changed = false;
+      window.__BUNDLED_STARRED.forEach(id => { if (!starredIds.has(id)) { starredIds.add(id); changed = true; } });
+      if (changed) saveStarred();
+    }
+    IDB.get().then(d => {
+      if (d && Array.isArray(d) && d.length) { load(d, false); return; }
+      if (window.__BUNDLED_BOOKMARKS && window.__BUNDLED_BOOKMARKS.length) {
+        load(window.__BUNDLED_BOOKMARKS, true);
+        return;
+      }
+      try {
+        const saved = localStorage.getItem('xbk2');
+        if (saved) { const d = JSON.parse(saved); if(Array.isArray(d) && d.length) { load(d, true); localStorage.removeItem('xbk2'); } }
+      } catch(e) {}
+    }).catch(() => {
+      if (window.__BUNDLED_BOOKMARKS && window.__BUNDLED_BOOKMARKS.length) load(window.__BUNDLED_BOOKMARKS, true);
+    });
   });
-});
+}
 </script>
+<script src="bookmarks-data.js"></script>
+<script>autoLoad();</script>
 </body>
 </html>
