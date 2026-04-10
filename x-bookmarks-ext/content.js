@@ -165,6 +165,7 @@
       },
       md: md,
       u: urls,
+      ba: new Date().toISOString(), // bookmarkedAt — when this was synced/bookmarked
     };
   }
 

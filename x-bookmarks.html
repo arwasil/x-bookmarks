@@ -537,8 +537,9 @@ function normalize(raw) {
       media = b.media.map(m => typeof m === 'object' ? { type: m.type||m.t||'photo', imgUrl: m.url||m.u||m.media_url_https||'', videoUrl: m.videoUrl||m.vu||null, w: m.w||0, h: m.h||0 } : { type:'photo', imgUrl:'', videoUrl:null, w:0, h:0 });
     }
 
+    const bookmarkedAt = b.ba || b.bookmarkedAt || ''; // when bookmarked/synced
     const cats = categorize(text, handle);
-    return { id, text, handle, name, verified, date, lang, url, metrics, media, cats };
+    return { id, text, handle, name, verified, date, bookmarkedAt, lang, url, metrics, media, cats };
   });
 }
 
@@ -584,17 +585,20 @@ function getFiltered() {
         return ym === activeTimeFilter.value;
       }
       if (activeTimeFilter.type === 'quick') {
+        // Use bookmarkedAt (when bookmarked) if available, fall back to tweet date
+        const bd = b.bookmarkedAt ? new Date(b.bookmarkedAt) : d;
+        if (isNaN(bd)) return false;
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        if (activeTimeFilter.value === 'today') return d >= today;
+        if (activeTimeFilter.value === 'today') return bd >= today;
         if (activeTimeFilter.value === 'thisweek') {
           const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
-          return d >= weekStart;
+          return bd >= weekStart;
         }
         if (activeTimeFilter.value === 'lastweek') {
           const thisWeekStart = new Date(today); thisWeekStart.setDate(today.getDate() - today.getDay());
           const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(thisWeekStart.getDate() - 7);
-          return d >= lastWeekStart && d < thisWeekStart;
+          return bd >= lastWeekStart && bd < thisWeekStart;
         }
       }
       return true;
@@ -1013,8 +1017,25 @@ function setStatus(msg) {
 // ===== EXPORT FOR CLAUDE =====
 function exportForClaude() {
   if (!BK.length) return;
-  // Compact format: only what Claude needs for analysis
-  const exported = BK.map(b => ({
+  const box = document.getElementById('syncBox');
+  box.innerHTML = '<h2 style="margin:0 0 8px">Export for Claude</h2>'
+    + '<p style="color:#8899a6;margin:0 0 16px;font-size:13px">Pick a range to export</p>'
+    + '<div style="display:flex;gap:10px;justify-content:center">'
+    + '<button class="pill pill-accent" onclick="doExportClaude(30)">Last 30 days</button>'
+    + '<button class="pill" onclick="doExportClaude(0)">Full export</button>'
+    + '</div>'
+    + '<div style="margin-top:12px"><button class="pill" onclick="closeSyncModal()">Cancel</button></div>';
+  document.getElementById('syncModal').classList.add('open');
+}
+function doExportClaude(days) {
+  closeSyncModal();
+  let src = BK;
+  if (days > 0) {
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
+    src = BK.filter(b => new Date(b.date) >= cutoff);
+  }
+  if (!src.length) { setStatus('No bookmarks found in that range.'); return; }
+  const exported = src.map(b => ({
     text: b.text,
     author: '@' + b.handle + (b.name ? ' (' + b.name + ')' : ''),
     date: b.date,
@@ -1026,13 +1047,14 @@ function exportForClaude() {
     starred: starredIds.has(b.id),
     hasMedia: b.media.length > 0,
   }));
+  const suffix = days > 0 ? '-last' + days + 'd' : '';
   const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'bookmarks-for-claude.json';
+  a.download = 'bookmarks-for-claude' + suffix + '.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  setStatus('Exported ' + exported.length + ' bookmarks. Move the file to your project folder, then ask Claude to read it.');
+  setStatus('Exported ' + exported.length + ' bookmarks' + (days > 0 ? ' (last ' + days + ' days)' : '') + '.');
 }
 
 function exportForDeploy() {
