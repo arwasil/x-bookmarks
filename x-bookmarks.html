@@ -537,9 +537,10 @@ function normalize(raw) {
       media = b.media.map(m => typeof m === 'object' ? { type: m.type||m.t||'photo', imgUrl: m.url||m.u||m.media_url_https||'', videoUrl: m.videoUrl||m.vu||null, w: m.w||0, h: m.h||0 } : { type:'photo', imgUrl:'', videoUrl:null, w:0, h:0 });
     }
 
-    const bookmarkedAt = b.ba || b.bookmarkedAt || ''; // when bookmarked/synced
+    const bookmarkedAt = b.ba || b.bookmarkedAt || '';
+    const thread = b.th || b.thread || null; // array of tweet texts if part of a self-thread
     const cats = categorize(text, handle);
-    return { id, text, handle, name, verified, date, bookmarkedAt, lang, url, metrics, media, cats };
+    return { id, text, handle, name, verified, date, bookmarkedAt, lang, url, metrics, media, cats, thread };
   });
 }
 
@@ -771,7 +772,7 @@ function cardHTML(b, idx) {
     + '<div class="card-body">'
     + '<div class="card-author"><div class="card-avatar" style="background:' + grad(b.handle) + '">' + ini(b.name) + '</div><div><div class="card-name">' + hl(b.name, searchQuery) + ' ' + (b.verified?IC.verified:'') + '</div><div class="card-handle">@' + b.handle + '</div></div></div>'
     + (b.text ? '<div class="card-text">' + hl(b.text, searchQuery) + (needsFade?'<div class="card-text-fade"></div>':'') + '</div>' : '')
-    + '<div class="card-tags">' + b.cats.map(c=>'<span class="tag tag-cat tag-'+c.toLowerCase().replace(/[\s\/]/g,'')+'">'+c+'</span>').join('') + mediaTag + '</div>'
+    + '<div class="card-tags">' + b.cats.map(c=>'<span class="tag tag-cat tag-'+c.toLowerCase().replace(/[\s\/]/g,'')+'">'+c+'</span>').join('') + mediaTag + (b.thread ? '<span class="tag" style="background:#1d3a5c;color:#1d9bf0">Thread ' + b.thread.length + '</span>' : '') + '</div>'
     + '<div class="card-stats"><span>' + IC.like + ' ' + fmt(b.metrics.l) + '</span><span>' + IC.rt + ' ' + fmt(b.metrics.rt) + '</span><span>' + IC.view + ' ' + fmt(b.metrics.v) + '</span><span style="margin-left:auto">' + fmtDate(b.date) + '</span></div>'
     + '</div></div>';
 }
@@ -864,7 +865,9 @@ function openLb(idx) {
   document.getElementById('lbContent').innerHTML = mainMedia
     + '<div class="lb-body">'
     + '<div class="lb-author"><div class="lb-avatar" style="background:' + grad(b.handle) + '">' + ini(b.name) + '</div><div><div class="lb-name">' + b.name + ' ' + (b.verified?IC.verified:'') + '</div><div class="lb-handle">@' + b.handle + ' &middot; ' + fmtDate(b.date) + '</div></div></div>'
-    + '<div class="lb-text">' + hl(b.text, searchQuery) + '</div>'
+    + (b.thread
+      ? '<div class="lb-text" style="border-left:3px solid #1d9bf0;padding-left:12px">' + b.thread.map((t,i) => '<div style="' + (i>0?'margin-top:12px;padding-top:12px;border-top:1px solid #333':'') + '">' + hl(t, searchQuery) + '</div>').join('') + '</div>'
+      : '<div class="lb-text">' + hl(b.text, searchQuery) + '</div>')
     + extras
     + '<div class="lb-metrics"><span>' + IC.reply + ' ' + fmt(b.metrics.r) + '</span><span>' + IC.rt + ' ' + fmt(b.metrics.rt) + '</span><span>' + IC.like + ' ' + fmt(b.metrics.l) + '</span><span>' + IC.view + ' ' + fmt(b.metrics.v) + '</span></div>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
@@ -1035,18 +1038,22 @@ function doExportClaude(days) {
     src = BK.filter(b => new Date(b.date) >= cutoff);
   }
   if (!src.length) { setStatus('No bookmarks found in that range.'); return; }
-  const exported = src.map(b => ({
-    text: b.text,
-    author: '@' + b.handle + (b.name ? ' (' + b.name + ')' : ''),
-    date: b.date,
-    categories: b.cats,
-    likes: b.metrics.l,
-    retweets: b.metrics.rt,
-    views: b.metrics.v,
-    url: b.url,
-    starred: starredIds.has(b.id),
-    hasMedia: b.media.length > 0,
-  }));
+  const exported = src.map(b => {
+    const obj = {
+      text: b.text,
+      author: '@' + b.handle + (b.name ? ' (' + b.name + ')' : ''),
+      date: b.date,
+      categories: b.cats,
+      likes: b.metrics.l,
+      retweets: b.metrics.rt,
+      views: b.metrics.v,
+      url: b.url,
+      starred: starredIds.has(b.id),
+      hasMedia: b.media.length > 0,
+    };
+    if (b.thread) obj.thread = b.thread;
+    return obj;
+  });
   const today = new Date().toISOString().slice(0, 10);
   const range = days > 0 ? 'last-' + days + 'days' : 'full';
   const fname = 'x-bookmarks-claude-' + range + '-' + today + '-' + exported.length + 'items.json';

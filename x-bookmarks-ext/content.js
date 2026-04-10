@@ -148,7 +148,14 @@
 
     const urls = (legacy.entities?.urls || []).map(u => u.expanded_url).filter(Boolean);
 
-    return {
+    // Thread detection: self_thread field or self-reply
+    const selfThread = legacy.self_thread?.id_str;
+    const authorId = userResult?.rest_id || '';
+    const inReplyToUserId = legacy.in_reply_to_user_id_str || '';
+    const isThread = !!selfThread || (!!inReplyToUserId && inReplyToUserId === authorId);
+    const conversationId = selfThread || legacy.conversation_id_str || '';
+
+    const obj = {
       i: legacy.id_str || tweet.rest_id,
       x: legacy.full_text || '',
       h: handle,
@@ -165,8 +172,112 @@
       },
       md: md,
       u: urls,
-      ba: new Date().toISOString(), // bookmarkedAt — when this was synced/bookmarked
+      ba: new Date().toISOString(),
     };
+    if (isThread) obj.ci = conversationId; // conversation ID — signals this is a thread
+    return obj;
+  }
+
+  // ====== Thread fetching ======
+  let threadGqlId = null;
+
+  async function discoverGqlId(opName) {
+    try {
+      const entries = performance.getEntriesByType('resource')
+        .filter(r => r.name.includes('client-web') && r.name.endsWith('.js'));
+      for (const entry of entries.slice(-15)) {
+        const resp = await fetch(entry.name);
+        const text = await resp.text();
+        const match = text.match(new RegExp('queryId:"([^"]+)",operationName:"' + opName + '"'));
+        if (match) return match[1];
+      }
+    } catch {}
+    return null;
+  }
+
+  async function fetchThread(tweetId) {
+    if (!threadGqlId) threadGqlId = await discoverGqlId('TweetDetail');
+    if (!threadGqlId) return null;
+    const csrf = getCsrf();
+    if (!csrf) return null;
+
+    const vars = { focalTweetId: tweetId, with_rux_injections: false, rankingMode: 'Relevance',
+      includePromotedContent: false, withCommunity: true, withQuickPromoteEligibilityTweetFields: true,
+      withBirdwatchNotes: true, withVoice: true };
+
+    const url = `https://x.com/i/api/graphql/${threadGqlId}/TweetDetail?variables=${encodeURIComponent(JSON.stringify(vars))}&features=${encodeURIComponent(JSON.stringify(FEATURES))}`;
+    const resp = await fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + BEARER, 'x-csrf-token': csrf,
+        'x-twitter-auth-type': 'OAuth2Session', 'x-twitter-active-user': 'yes', 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    if (resp.status === 429) {
+      setStatus('Rate limited — waiting 60s...');
+      await new Promise(r => setTimeout(r, 60000));
+      return fetchThread(tweetId);
+    }
+    if (!resp.ok) return null;
+    return resp.json();
+  }
+
+  function extractThreadTweets(data, authorHandle) {
+    const instructions = data?.data?.threaded_conversation_with_injections_v2?.instructions || [];
+    const addEntries = instructions.find(i => i.type === 'TimelineAddEntries') || instructions[0];
+    const entries = addEntries?.entries || [];
+    const tweets = [];
+    const handle = authorHandle.toLowerCase();
+
+    function extract(result) {
+      if (!result) return;
+      const tw = result.tweet || result;
+      if (tw.__typename === 'TweetTombstone' || tw.__typename === 'TweetUnavailable') return;
+      const leg = tw.legacy;
+      if (!leg?.full_text) return;
+      const h = (tw.core?.user_results?.result?.legacy?.screen_name || '').toLowerCase();
+      if (h !== handle) return;
+      tweets.push({ id: leg.id_str || tw.rest_id, text: leg.full_text, date: leg.created_at });
+    }
+
+    for (const entry of entries) {
+      if (entry.content?.itemContent?.tweet_results?.result) extract(entry.content.itemContent.tweet_results.result);
+      for (const item of (entry.content?.items || [])) {
+        if (item.item?.itemContent?.tweet_results?.result) extract(item.item.itemContent.tweet_results.result);
+      }
+    }
+
+    tweets.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const seen = new Set();
+    return tweets.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
+  }
+
+  async function enrichThreads(bookmarks) {
+    const threadBks = bookmarks.filter(b => !!b.ci);
+    if (!threadBks.length) return;
+
+    // Group by conversation ID
+    const convMap = new Map();
+    for (const b of threadBks) {
+      if (!convMap.has(b.ci)) convMap.set(b.ci, []);
+      convMap.get(b.ci).push(b);
+    }
+
+    setStatus(`Fetching ${convMap.size} thread(s)...`);
+    let done = 0;
+    for (const [, bks] of convMap) {
+      if (stopRequested) break;
+      setStatus(`Fetching thread ${++done}/${convMap.size}...`);
+      try {
+        const data = await fetchThread(bks[0].i);
+        if (data) {
+          const thread = extractThreadTweets(data, bks[0].h);
+          if (thread.length > 1) {
+            const texts = thread.map(t => t.text);
+            for (const b of bks) b.th = texts;
+          }
+        }
+      } catch (e) { console.warn('[XBK] Thread fetch failed:', e); }
+      await new Promise(r => setTimeout(r, 1200));
+    }
   }
 
   // ====== Sync (incremental or full) ======
@@ -267,8 +378,14 @@
         return;
       }
 
+      // Enrich thread bookmarks with full thread text
+      if (newBookmarks.length > 0 && !stopRequested) {
+        await enrichThreads(newBookmarks);
+      }
+
       if (!stopRequested) {
-        setStatus(`Done! ${newBookmarks.length} ${incremental ? 'new' : ''} bookmarks fetched.`);
+        const threadCount = newBookmarks.filter(b => b.th).length;
+        setStatus(`Done! ${newBookmarks.length} bookmarks` + (threadCount ? `, ${threadCount} threads captured` : '') + '.');
       }
 
       if (newBookmarks.length > 0) {
