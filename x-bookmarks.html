@@ -163,6 +163,12 @@
   .lb-open { display:inline-flex; align-items:center; gap:6px; padding:8px 18px; border-radius:20px; background:var(--glass); border:1px solid var(--glass-border); color:var(--text); font-size:13px; font-family:inherit; cursor:pointer; text-decoration:none; transition:background 0.2s; }
   .lb-open:hover { background:rgba(255,255,255,0.15); }
 
+  /* LIGHTBOX DRAG-DOWN (mobile) */
+  .lb-content { transition:transform 0.25s ease, opacity 0.25s ease; will-change:transform,opacity; }
+  .lb-content.dragging { transition:none; }
+  .lb-drag-hint { width:36px; height:4px; border-radius:2px; background:rgba(255,255,255,0.25); margin:10px auto 0; flex-shrink:0; display:none; }
+  @media(max-width:600px) { .lb-drag-hint { display:block; } }
+
   /* ONBOARDING */
   .onboarding { max-width:480px; margin:100px auto; text-align:center; padding:0 24px; }
   .onboarding h2 { font-size:26px; margin-bottom:8px; font-weight:700; }
@@ -290,7 +296,7 @@
   <div class="masonry" id="grid"></div>
 </div>
 
-<div id="onboarding" class="onboarding">
+<div id="onboarding" class="onboarding" style="display:none">
   <h2>Your X Bookmarks, Offline</h2>
   <p>A visual grid of all your saved tweets. Browse, search, and filter without opening X.</p>
   <div class="drop-zone" id="dropZone">
@@ -309,7 +315,9 @@
 
 <div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
   <button class="lb-close" onclick="closeLightbox()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-  <div class="lb-content" id="lbContent"></div>
+  <div class="lb-content" id="lbContent">
+    <div class="lb-drag-hint"></div>
+  </div>
 </div>
 
 <div class="sync-modal" id="syncModal" onclick="if(event.target===this)closeSyncModal()">
@@ -882,9 +890,51 @@ function openLb(idx) {
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('open');
   document.body.style.overflow = '';
-  // Pause any playing video
   const v = document.querySelector('.lb-vid'); if(v) v.pause();
+  const lbc = document.getElementById('lbContent');
+  lbc.style.transform = ''; lbc.style.opacity = '';
+  lbc.classList.remove('dragging');
 }
+
+// ===== LIGHTBOX DRAG-DOWN TO CLOSE (mobile) =====
+(function() {
+  const lb = document.getElementById('lightbox');
+  const lbc = document.getElementById('lbContent');
+  let startY = 0, currentY = 0, dragging = false;
+
+  lbc.addEventListener('touchstart', function(e) {
+    if (lbc.scrollTop > 0) return; // only drag when scrolled to top
+    startY = e.touches[0].clientY;
+    currentY = startY;
+    dragging = false;
+  }, { passive: true });
+
+  lbc.addEventListener('touchmove', function(e) {
+    const dy = e.touches[0].clientY - startY;
+    if (!dragging && dy > 8) { dragging = true; lbc.classList.add('dragging'); }
+    if (!dragging) return;
+    currentY = e.touches[0].clientY;
+    const offset = Math.max(0, currentY - startY);
+    lbc.style.transform = 'translateY(' + offset + 'px)';
+    lbc.style.opacity = Math.max(0.2, 1 - offset / 400);
+    if (offset > 0) e.preventDefault();
+  }, { passive: false });
+
+  lbc.addEventListener('touchend', function() {
+    if (!dragging) return;
+    const offset = currentY - startY;
+    dragging = false;
+    lbc.classList.remove('dragging');
+    if (offset > 120) {
+      lbc.style.transform = 'translateY(100vh)';
+      lbc.style.opacity = '0';
+      setTimeout(closeLightbox, 250);
+    } else {
+      lbc.style.transform = '';
+      lbc.style.opacity = '';
+    }
+  }, { passive: true });
+})();
 
 // ===== SYNC (bookmarklet approach) =====
 function getSyncScript() {
@@ -1105,6 +1155,7 @@ document.addEventListener('keydown', e => {
 });
 
 // ===== AUTO-LOAD (runs after bookmarks-data.js if present) =====
+function showOnboarding() { document.getElementById('onboarding').style.display = ''; }
 function autoLoad() {
   loadStarred().then(() => {
     IDB.get().then(d => {
@@ -1115,10 +1166,12 @@ function autoLoad() {
       }
       try {
         const saved = localStorage.getItem('xbk2');
-        if (saved) { const d = JSON.parse(saved); if(Array.isArray(d) && d.length) { load(d, true); localStorage.removeItem('xbk2'); } }
+        if (saved) { const d = JSON.parse(saved); if(Array.isArray(d) && d.length) { load(d, true); localStorage.removeItem('xbk2'); return; } }
       } catch(e) {}
+      showOnboarding();
     }).catch(() => {
       if (window.__BUNDLED_BOOKMARKS && window.__BUNDLED_BOOKMARKS.length) load(window.__BUNDLED_BOOKMARKS, true);
+      else showOnboarding();
     });
   });
 }
