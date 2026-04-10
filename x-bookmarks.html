@@ -1047,11 +1047,13 @@ function doExportClaude(days) {
     starred: starredIds.has(b.id),
     hasMedia: b.media.length > 0,
   }));
-  const suffix = days > 0 ? '-last' + days + 'd' : '';
+  const today = new Date().toISOString().slice(0, 10);
+  const range = days > 0 ? 'last-' + days + 'days' : 'full';
+  const fname = 'x-bookmarks-claude-' + range + '-' + today + '-' + exported.length + 'items.json';
   const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'bookmarks-for-claude' + suffix + '.json';
+  a.download = fname;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   setStatus('Exported ' + exported.length + ' bookmarks' + (days > 0 ? ' (last ' + days + ' days)' : '') + '.');
