@@ -413,6 +413,90 @@ function toggleStar(id, evt) {
   }
 }
 
+// ===== CLOUD BOOKMARK SYNC (Supabase) =====
+async function pushToCloud(rawBookmarks) {
+  if (!rawBookmarks.length) return;
+  const BATCH = 200;
+  for (let i = 0; i < rawBookmarks.length; i += BATCH) {
+    const batch = rawBookmarks.slice(i, i + BATCH)
+      .map(b => ({ tweet_id: b.i || b.id || b.tweetId || '', data: b }))
+      .filter(r => r.tweet_id);
+    if (!batch.length) continue;
+    try {
+      await fetch(SUPA_URL + '/rest/v1/bookmarks', {
+        method: 'POST',
+        headers: { ...supaHeaders, 'Prefer': 'resolution=ignore-duplicates' },
+        body: JSON.stringify(batch)
+      });
+    } catch(e) {}
+  }
+}
+
+async function pullCloudIds() {
+  const ids = [];
+  let offset = 0;
+  while (true) {
+    const r = await fetch(SUPA_URL + '/rest/v1/bookmarks?select=tweet_id&limit=1000&offset=' + offset, { headers: supaHeaders });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    ids.push(...rows.map(r => r.tweet_id));
+    if (rows.length < 1000) break;
+    offset += 1000;
+  }
+  return ids;
+}
+
+async function pullCloudData(tweetIds) {
+  if (!tweetIds.length) return [];
+  const all = [];
+  const CHUNK = 100;
+  for (let i = 0; i < tweetIds.length; i += CHUNK) {
+    const ids = tweetIds.slice(i, i + CHUNK).map(id => '"' + id + '"').join(',');
+    const r = await fetch(SUPA_URL + '/rest/v1/bookmarks?select=data&tweet_id=in.(' + ids + ')', { headers: supaHeaders });
+    if (r.ok) all.push(...(await r.json()).map(r => r.data));
+  }
+  return all;
+}
+
+async function pullAllCloudData() {
+  const all = [];
+  let offset = 0;
+  while (true) {
+    const r = await fetch(SUPA_URL + '/rest/v1/bookmarks?select=data&limit=1000&offset=' + offset, { headers: supaHeaders });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    all.push(...rows.map(r => r.data));
+    if (rows.length < 1000) break;
+    offset += 1000;
+  }
+  return all;
+}
+
+async function cloudSync(localRaw) {
+  try {
+    const cloudIds = await pullCloudIds();
+    if (cloudIds === null) return;
+
+    const localIds = new Set(localRaw.map(b => b.i || b.id || b.tweetId || ''));
+    const cloudIdSet = new Set(cloudIds);
+
+    // Pull: items in cloud but not local
+    const missing = cloudIds.filter(id => !localIds.has(id));
+    if (missing.length > 0) {
+      const newData = await pullCloudData(missing);
+      if (newData.length) {
+        const merged = [...localRaw, ...newData];
+        load(merged);
+        setStatus(newData.length + ' new bookmarks synced from cloud');
+      }
+    }
+
+    // Push: items in local but not cloud
+    const toUpload = localRaw.filter(b => !cloudIdSet.has(b.i || b.id || b.tweetId || ''));
+    if (toUpload.length > 0) pushToCloud(toUpload);
+  } catch(e) {}
+}
+
 // ===== IndexedDB PERSISTENCE =====
 const IDB = {
   _db: null,
@@ -1047,14 +1131,17 @@ function readFile(file) {
           if (addedCount === 0 && data.length > BK.length) {
             // Full re-import with more data — replace
             load(data);
+            pushToCloud(data);
             return;
           }
           const merged = [...newItems, ...rawExisting];
           load(merged);
           setStatus('Merged ' + addedCount + ' new bookmarks! Total: ' + BK.length);
+          if (newItems.length) pushToCloud(newItems);
         });
       } else {
         load(data);
+        pushToCloud(data);
       }
     } catch(err) { alert('Could not parse JSON: ' + err.message); }
   };
@@ -1156,22 +1243,30 @@ document.addEventListener('keydown', e => {
 
 // ===== AUTO-LOAD (runs after bookmarks-data.js if present) =====
 function showOnboarding() { document.getElementById('onboarding').style.display = ''; }
+function loadFromCloud() {
+  return pullAllCloudData().then(data => {
+    if (data && data.length) { load(data); return true; }
+    return false;
+  });
+}
 function autoLoad() {
   loadStarred().then(() => {
     IDB.get().then(d => {
-      if (d && Array.isArray(d) && d.length) { load(d, false); return; }
+      if (d && Array.isArray(d) && d.length) { load(d, false); cloudSync(d); return; }
       if (window.__BUNDLED_BOOKMARKS && window.__BUNDLED_BOOKMARKS.length) {
         load(window.__BUNDLED_BOOKMARKS, true);
+        cloudSync(window.__BUNDLED_BOOKMARKS);
         return;
       }
       try {
         const saved = localStorage.getItem('xbk2');
-        if (saved) { const d = JSON.parse(saved); if(Array.isArray(d) && d.length) { load(d, true); localStorage.removeItem('xbk2'); return; } }
+        if (saved) { const d = JSON.parse(saved); if(Array.isArray(d) && d.length) { load(d, true); localStorage.removeItem('xbk2'); cloudSync(d); return; } }
       } catch(e) {}
-      showOnboarding();
+      // No local data — try cloud before showing onboarding
+      loadFromCloud().then(ok => { if (!ok) showOnboarding(); }).catch(() => showOnboarding());
     }).catch(() => {
-      if (window.__BUNDLED_BOOKMARKS && window.__BUNDLED_BOOKMARKS.length) load(window.__BUNDLED_BOOKMARKS, true);
-      else showOnboarding();
+      if (window.__BUNDLED_BOOKMARKS && window.__BUNDLED_BOOKMARKS.length) { load(window.__BUNDLED_BOOKMARKS, true); cloudSync(window.__BUNDLED_BOOKMARKS); }
+      else loadFromCloud().then(ok => { if (!ok) showOnboarding(); }).catch(() => showOnboarding());
     });
   });
 }
