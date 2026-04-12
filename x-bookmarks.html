@@ -39,9 +39,19 @@
   .pill-accent { background:var(--accent); border-color:var(--accent); color:#fff; }
   .pill-accent:hover { background:#1a8cd8; }
 
-  .filter-row { max-width:1400px; margin:12px auto 0; padding:0 24px; display:flex; gap:6px; align-items:flex-start; flex-wrap:wrap; }
+  .filter-sticky { position:sticky; top:var(--topbar-h,56px); z-index:50; background:rgba(10,10,10,0.88); backdrop-filter:blur(20px) saturate(1.4); border-bottom:1px solid var(--border); padding-bottom:8px; transition:padding 0.25s; }
+  .filter-sticky.collapsed { padding-bottom:0; }
+  .filter-sticky.collapsed .filter-row { margin-top:8px; margin-bottom:8px; flex-wrap:nowrap; overflow:hidden; max-height:34px; }
+  .filter-sticky.collapsed .filter-row #filterContainer { flex-wrap:nowrap; overflow:hidden; mask-image:linear-gradient(to right, #000 80%, transparent 100%); -webkit-mask-image:linear-gradient(to right, #000 80%, transparent 100%); }
+  .filter-sticky.collapsed .time-row { display:none !important; }
+  .filter-toggle { padding:7px 10px; border-radius:20px; border:1px solid var(--glass-border); background:var(--glass); color:var(--text-sec); font-size:12px; font-family:inherit; font-weight:500; cursor:pointer; transition:all 0.2s; backdrop-filter:blur(8px); white-space:nowrap; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .filter-toggle:hover { background:rgba(255,255,255,0.12); color:var(--text); border-color:var(--border-hover); }
+  .filter-toggle svg { width:14px; height:14px; fill:currentColor; transition:transform 0.25s; }
+  .filter-sticky.collapsed .filter-toggle svg { transform:rotate(180deg); }
+
+  .filter-row { max-width:1400px; margin:12px auto 0; padding:0 24px; display:flex; gap:6px; align-items:flex-start; flex-wrap:wrap; transition:max-height 0.3s ease; }
   .filter-label { font-size:12px; color:var(--text-dim); margin-right:4px; line-height:30px; }
-  #filterContainer { display:flex; gap:4px; flex-wrap:wrap; flex:1; min-width:0; }
+  #filterContainer { display:flex; gap:4px; flex-wrap:wrap; flex:1; min-width:0; transition:all 0.25s; }
   .sort-group { display:flex; gap:4px; flex-shrink:0; }
 
   .grid-wrap { max-width:1400px; margin:16px auto 0; padding:0 24px 60px; }
@@ -212,6 +222,8 @@
     .search-wrap { min-width:0; max-width:none; order:10; flex-basis:100%; }
     .controls { gap:6px; }
     .controls .pill { padding:6px 10px; font-size:11px; }
+    .filter-sticky { padding-bottom:6px; }
+    .filter-sticky.collapsed .filter-row { max-height:28px; margin-top:6px; margin-bottom:6px; }
     .filter-row { padding:0 14px; gap:4px; margin-top:8px; }
     .filter-row .pill { padding:5px 10px; font-size:11px; }
     #filterContainer { gap:3px; }
@@ -230,6 +242,7 @@
     .lb-close { top:10px; right:10px; width:36px; height:36px; }
     .lb-body { padding:14px; }
     .lb-text { font-size:14px; }
+    .filter-toggle { padding:5px 8px; font-size:11px; }
   }
   .banner { max-width:1400px; margin:12px auto 0; padding:0 24px; }
   .banner-box { background:rgba(29,155,240,0.08); border:1px solid rgba(29,155,240,0.2); border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:12px; font-size:13px; color:var(--accent); }
@@ -268,24 +281,28 @@
   </div>
 </div>
 
-<div class="filter-row" id="filterRow" style="display:none">
-  <span class="filter-label">Filter:</span>
-  <div id="filterContainer"></div>
-  <div class="sort-group" id="sortGroup">
-    <button class="pill active" data-sort="newest">Newest</button>
-    <button class="pill" data-sort="popular">Top</button>
-    <button class="pill" data-sort="views">Views</button>
-    <button class="pill" data-sort="media">Media</button>
-    <div class="view-toggle">
-      <button class="view-btn active" id="viewCard" onclick="setView('card')" title="Card view"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm0 10h8v8H3v-8zm10-10h8v8h-8V3zm0 10h8v8h-8v-8z"/></svg></button>
-      <button class="view-btn" id="viewThumb" onclick="setView('thumb')" title="Thumbnail grid"><svg viewBox="0 0 24 24"><path d="M2 4h4v4H2V4zm6 0h4v4H8V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM2 10h4v4H2v-4zm6 0h4v4H8v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM2 16h4v4H2v-4zm6 0h4v4H8v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/></svg></button>
+<div class="filter-sticky" id="filterSticky" style="display:none">
+  <div class="filter-row" id="filterRow">
+    <span class="filter-label">Filter:</span>
+    <div id="filterContainer"></div>
+    <div class="sort-group" id="sortGroup">
+      <button class="filter-toggle" id="filterToggle" onclick="toggleFilterExpand()" title="Expand/collapse filters">
+        <svg viewBox="0 0 24 24"><path d="M7 14l5-5 5 5z"/></svg>
+      </button>
+      <button class="pill active" data-sort="newest">Newest</button>
+      <button class="pill" data-sort="popular">Top</button>
+      <button class="pill" data-sort="views">Views</button>
+      <button class="pill" data-sort="media">Media</button>
+      <div class="view-toggle">
+        <button class="view-btn active" id="viewCard" onclick="setView('card')" title="Card view"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm0 10h8v8H3v-8zm10-10h8v8h-8V3zm0 10h8v8h-8v-8z"/></svg></button>
+        <button class="view-btn" id="viewThumb" onclick="setView('thumb')" title="Thumbnail grid"><svg viewBox="0 0 24 24"><path d="M2 4h4v4H2V4zm6 0h4v4H8V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM2 10h4v4H2v-4zm6 0h4v4H8v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM2 16h4v4H2v-4zm6 0h4v4H8v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/></svg></button>
+      </div>
     </div>
   </div>
-</div>
-
-<div class="time-row" id="timeRow" style="display:none">
-  <span class="filter-label">Time:</span>
-  <div id="timeContainer"></div>
+  <div class="time-row" id="timeRow">
+    <span class="filter-label">Time:</span>
+    <div id="timeContainer"></div>
+  </div>
 </div>
 
 <div id="bannerWrap"></div>
@@ -641,7 +658,8 @@ function normalize(raw) {
 function load(raw, saveToStorage) {
   BK = normalize(raw);
   document.getElementById('onboarding').style.display = 'none';
-  ['statsBar','searchWrap','controlsWrap','filterRow','timeRow'].forEach(id => document.getElementById(id).style.display = '');
+  ['statsBar','searchWrap','controlsWrap','filterSticky'].forEach(id => document.getElementById(id).style.display = '');
+  initFilterSticky();
   document.getElementById('resultInfo').style.display = '';
   document.getElementById('totalCount').textContent = BK.length;
   document.getElementById('authorCount').textContent = new Set(BK.map(b=>b.handle)).size;
@@ -881,6 +899,45 @@ function thumbHTML(b, idx) {
     + (isVideo ? '<div class="thumb-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>' : '')
     + '<div class="thumb-overlay"><div class="thumb-stats"><span>' + IC.like + ' ' + fmt(b.metrics.l) + '</span><span>' + IC.view + ' ' + fmt(b.metrics.v) + '</span></div></div>'
     + '</div>';
+}
+
+// ===== STICKY FILTER =====
+let filterExpanded = true;
+let filterManual = false; // true if user manually toggled
+let lastScrollY = 0;
+function initFilterSticky() {
+  const topbar = document.querySelector('.topbar');
+  const sticky = document.getElementById('filterSticky');
+  if (!topbar || !sticky) return;
+  const updateTopH = () => document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
+  updateTopH();
+  window.addEventListener('resize', updateTopH);
+  // Auto-collapse on scroll down, expand on scroll to top
+  lastScrollY = window.scrollY;
+  window.addEventListener('scroll', () => {
+    const sy = window.scrollY;
+    const delta = sy - lastScrollY;
+    lastScrollY = sy;
+    if (filterManual) return;
+    // Scrolling down past threshold → collapse
+    if (delta > 4 && sy > 80 && filterExpanded) {
+      filterExpanded = false;
+      sticky.classList.add('collapsed');
+    }
+    // Scrolled back to top → expand
+    if (sy <= 10 && !filterExpanded) {
+      filterExpanded = true;
+      sticky.classList.remove('collapsed');
+    }
+  }, { passive: true });
+}
+function toggleFilterExpand() {
+  const sticky = document.getElementById('filterSticky');
+  filterExpanded = !filterExpanded;
+  filterManual = true;
+  sticky.classList.toggle('collapsed', !filterExpanded);
+  // Reset manual override after 3s so auto-behavior resumes
+  setTimeout(() => { filterManual = false; }, 3000);
 }
 
 function setView(v) {
