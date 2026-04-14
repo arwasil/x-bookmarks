@@ -168,7 +168,10 @@
   .lb-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; color:#fff; }
   .lb-name { font-weight:600; font-size:15px; display:flex; align-items:center; gap:4px; }
   .lb-name svg { width:16px; height:16px; fill:var(--accent); }
-  .lb-handle { font-size:13px; color:var(--text-sec); }
+  .lb-handle { font-size:13px; color:var(--text-sec); display:flex; align-items:center; gap:5px; }
+  .lb-author-filter { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; border:none; background:rgba(255,255,255,0.08); cursor:pointer; color:var(--text-sec); padding:0; transition:background 0.15s, color 0.15s; flex-shrink:0; }
+  .lb-author-filter svg { width:13px; height:13px; }
+  .lb-author-filter:hover { background:rgba(29,155,240,0.2); color:var(--accent); }
   .lb-text { font-size:15px; line-height:1.55; margin-bottom:16px; white-space:pre-wrap; word-break:break-word; }
   .lb-extras { display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:4px; }
   .lb-extras img { height:80px; border-radius:10px; object-fit:cover; flex-shrink:0; }
@@ -248,6 +251,7 @@
     .lb-body { padding:14px; }
     .lb-text { font-size:14px; }
     .filter-toggle { padding:5px 8px; font-size:11px; }
+    .card-author-filter { opacity:0.6; }
   }
   .banner { max-width:1400px; margin:12px auto 0; padding:0 24px; }
   .banner-box { background:rgba(29,155,240,0.08); border:1px solid rgba(29,155,240,0.2); border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:12px; font-size:13px; color:var(--accent); }
@@ -1020,7 +1024,7 @@ function openLb(idx) {
 
   document.getElementById('lbContent').innerHTML = mainMedia
     + '<div class="lb-body">'
-    + '<div class="lb-author"><div class="lb-avatar" style="background:' + grad(b.handle) + '">' + ini(b.name) + '</div><div><div class="lb-name">' + b.name + ' ' + (b.verified?IC.verified:'') + '</div><div class="lb-handle">@' + b.handle + ' &middot; ' + fmtDate(b.date) + '</div></div></div>'
+    + '<div class="lb-author"><div class="lb-avatar" style="background:' + grad(b.handle) + '">' + ini(b.name) + '</div><div><div class="lb-name">' + b.name + ' ' + (b.verified?IC.verified:'') + '</div><div class="lb-handle">@' + b.handle + ' &middot; ' + fmtDate(b.date) + '<button class="lb-author-filter" onclick="filterByAuthor(\'' + b.handle + '\',event)" title="Filter by @' + b.handle + '">' + IC.filter + '</button></div></div></div>'
     + (b.thread
       ? '<div class="lb-text" style="border-left:3px solid #1d9bf0;padding-left:12px">' + b.thread.map((t,i) => '<div style="' + (i>0?'margin-top:12px;padding-top:12px;border-top:1px solid #333':'') + '">' + hl(t, searchQuery) + '</div>').join('') + '</div>'
       : '<div class="lb-text">' + hl(b.text, searchQuery) + '</div>')
@@ -1271,11 +1275,12 @@ function doExportClaude(days) {
 // ===== SEARCH =====
 function filterByAuthor(handle, evt) {
   if (evt) { evt.stopPropagation(); evt.preventDefault(); }
+  if (document.getElementById('lightbox').classList.contains('open')) closeLightbox();
   document.getElementById('searchInput').value = handle;
   searchQuery = handle;
   displayLimit = 80;
   render();
-  document.getElementById('searchInput').focus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 document.getElementById('searchInput').addEventListener('input', e => {
