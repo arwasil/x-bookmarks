@@ -96,7 +96,11 @@
   .card-author { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .card-avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; color:#fff; flex-shrink:0; }
   .card-name { font-weight:600; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:3px; }
-  .card-handle { font-size:12px; color:var(--text-dim); }
+  .card-handle { font-size:12px; color:var(--text-dim); display:flex; align-items:center; gap:4px; }
+  .card-author-filter { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; border:none; background:transparent; cursor:pointer; color:var(--text-dim); padding:0; opacity:0; transition:opacity 0.15s, background 0.15s; flex-shrink:0; }
+  .card-author-filter svg { width:12px; height:12px; }
+  .card:hover .card-author-filter { opacity:0.7; }
+  .card-author-filter:hover { opacity:1!important; background:rgba(29,155,240,0.15); color:var(--accent); }
   .card-name svg { width:14px; height:14px; fill:var(--accent); flex-shrink:0; }
   .card-text { font-size:13px; line-height:1.45; color:rgba(255,255,255,0.78); margin-bottom:10px; max-height:80px; overflow:hidden; position:relative; word-break:break-word; white-space:pre-wrap; }
   .card-text-fade { position:absolute; bottom:0; left:0; right:0; height:30px; background:linear-gradient(transparent, var(--surface)); }
@@ -137,7 +141,7 @@
   .card-star { position:absolute; top:8px; right:8px; z-index:5; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,0.5); backdrop-filter:blur(6px); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s; }
   .card:hover .card-star { opacity:1; }
   .card-star.starred { opacity:1; background:rgba(250,204,21,0.25); }
-  .card-star svg { width:16px; height:16px; fill:none; stroke:rgba(255,255,255,0.6); stroke-width:2; }
+  .card-star svg { width:16px; height:16px; fill:none; stroke:#fff; stroke-width:2; filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5)); }
   .card-star.starred svg { fill:#fbbf24; stroke:#fbbf24; }
   .thumb-star { position:absolute; top:4px; left:4px; z-index:5; }
   .thumb-star svg { width:14px; height:14px; fill:#fbbf24; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
@@ -354,7 +358,8 @@ const IC = {
   like: '<svg viewBox="0 0 24 24"><path d="M20.884 13.19c-1.351 2.48-4.001 5.12-8.379 7.67l-.503.3-.504-.3c-4.379-2.55-7.029-5.19-8.382-7.67-1.36-2.5-1.45-4.92-.334-6.98C3.907 3.85 5.765 2.75 8 2.75c1.592 0 2.99.614 4 1.592 1.01-.978 2.408-1.592 4-1.592 2.235 0 4.093 1.1 5.22 3.46 1.113 2.06 1.024 4.48-.336 6.98z"/></svg>',
   view: '<svg viewBox="0 0 24 24"><path d="M8.75 21V3h2v18h-2zM18.75 21V8.5h2V21h-2zM13.75 21v-8h2v8h-2zM3.75 21v-4h2v4h-2z"/></svg>',
   verified: '<svg viewBox="0 0 24 24"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.27 4.8-5.23 1.47 1.36-6.2 6.76z"/></svg>',
-  star: '<svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+  star: '<svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  filter: '<svg viewBox="0 0 24 24"><path d="M3 6h18M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>'
 };
 
 // ===== STATE =====
@@ -882,7 +887,7 @@ function cardHTML(b, idx) {
     + '<button class="card-star' + (isStar?' starred':'') + '" onclick="toggleStar(\'' + b.id + '\',event)">' + IC.star + '</button>'
     + mediaHTML
     + '<div class="card-body">'
-    + '<div class="card-author"><div class="card-avatar" style="background:' + grad(b.handle) + '">' + ini(b.name) + '</div><div><div class="card-name">' + hl(b.name, searchQuery) + ' ' + (b.verified?IC.verified:'') + '</div><div class="card-handle">@' + b.handle + '</div></div></div>'
+    + '<div class="card-author"><div class="card-avatar" style="background:' + grad(b.handle) + '">' + ini(b.name) + '</div><div><div class="card-name">' + hl(b.name, searchQuery) + ' ' + (b.verified?IC.verified:'') + '</div><div class="card-handle">@' + b.handle + '<button class="card-author-filter" onclick="filterByAuthor(\'' + b.handle + '\',event)" title="Filter by @' + b.handle + '">' + IC.filter + '</button></div></div></div>'
     + (b.text ? '<div class="card-text">' + hl(b.text, searchQuery) + (needsFade?'<div class="card-text-fade"></div>':'') + '</div>' : '')
     + '<div class="card-tags">' + b.cats.map(c=>'<span class="tag tag-cat tag-'+c.toLowerCase().replace(/[\s\/]/g,'')+'">'+c+'</span>').join('') + mediaTag + (b.thread ? '<span class="tag" style="background:#1d3a5c;color:#1d9bf0">Thread ' + b.thread.length + '</span>' : '') + '</div>'
     + '<div class="card-stats"><span>' + IC.like + ' ' + fmt(b.metrics.l) + '</span><span>' + IC.rt + ' ' + fmt(b.metrics.rt) + '</span><span>' + IC.view + ' ' + fmt(b.metrics.v) + '</span><span style="margin-left:auto">' + fmtDate(b.date) + '</span></div>'
@@ -1264,6 +1269,15 @@ function doExportClaude(days) {
 
 
 // ===== SEARCH =====
+function filterByAuthor(handle, evt) {
+  if (evt) { evt.stopPropagation(); evt.preventDefault(); }
+  document.getElementById('searchInput').value = handle;
+  searchQuery = handle;
+  displayLimit = 80;
+  render();
+  document.getElementById('searchInput').focus();
+}
+
 document.getElementById('searchInput').addEventListener('input', e => {
   clearTimeout(debounceT);
   debounceT = setTimeout(() => { searchQuery = e.target.value.trim(); displayLimit = 80; render(); }, 200);
