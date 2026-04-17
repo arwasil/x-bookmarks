@@ -4,7 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="no-referrer">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0f1a">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%231d9bf0'/><path d='M6 3h10a1.5 1.5 0 011.5 1.5v14L12 15.5 6.5 18.5V4.5A1.5 1.5 0 018 3z' fill='white' transform='translate(1,1.5) scale(0.85)'/></svg>">
+<link rel="manifest" href="/manifest.json">
 <title>X Bookmarks</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -184,6 +188,9 @@
   .lb-metrics svg { width:15px; height:15px; fill:currentColor; }
   .lb-open { display:inline-flex; align-items:center; gap:6px; padding:8px 18px; border-radius:20px; background:var(--glass); border:1px solid var(--glass-border); color:var(--text); font-size:13px; font-family:inherit; cursor:pointer; text-decoration:none; transition:background 0.2s; }
   .lb-open:hover { background:rgba(255,255,255,0.15); }
+  .lb-copy { padding:8px 16px; border-radius:20px; background:var(--glass); border:1px solid var(--glass-border); color:var(--text); font-size:13px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s; }
+  .lb-copy:hover { background:rgba(255,255,255,0.15); }
+  .lb-copy svg { width:14px; height:14px; }
 
   /* LIGHTBOX DRAG-DOWN (mobile) */
   .lb-content { transition:transform 0.25s ease, opacity 0.25s ease; will-change:transform,opacity; }
@@ -1038,11 +1045,21 @@ function openLb(idx) {
     + '<div class="lb-metrics"><span>' + IC.reply + ' ' + fmt(b.metrics.r) + '</span><span>' + IC.rt + ' ' + fmt(b.metrics.rt) + '</span><span>' + IC.like + ' ' + fmt(b.metrics.l) + '</span><span>' + IC.view + ' ' + fmt(b.metrics.v) + '</span></div>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
     + '<button class="lb-star' + (starredIds.has(b.id) ? ' starred' : '') + '" id="lbStarBtn" data-id="' + b.id + '" onclick="toggleStar(\'' + b.id + '\',event)">' + IC.star + ' <span>' + (starredIds.has(b.id) ? 'Starred' : 'Star') + '</span></button>'
+    + '<button class="lb-copy" onclick="copyTweetUrl(\'' + b.url + '\',this,event)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2" fill="none"/></svg> <span>Copy URL</span></button>'
     + '<a class="lb-open" href="' + b.url + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="15 3 21 3 21 9" stroke="currentColor" stroke-width="2" fill="none"/><line x1="10" y1="14" x2="21" y2="3" stroke="currentColor" stroke-width="2"/></svg> Open on X</a>'
     + '</div>'
     + '</div>';
   document.getElementById('lightbox').classList.add('open');
   document.body.style.overflow = 'hidden';
+}
+
+function copyTweetUrl(url, btn, evt) {
+  evt.stopPropagation();
+  navigator.clipboard.writeText(url).then(() => {
+    const span = btn.querySelector('span');
+    span.textContent = 'Copied!';
+    setTimeout(() => { span.textContent = 'Copy URL'; }, 1500);
+  });
 }
 
 function closeLightbox() {
@@ -1359,6 +1376,6 @@ function autoLoad() {
 }
 </script>
 <script src="bookmarks-data.js"></script>
-<script>autoLoad();</script>
+<script>autoLoad();if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');</script>
 </body>
 </html>

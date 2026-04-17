@@ -1,0 +1,16 @@
+{
+  "name": "X Bookmarks",
+  "short_name": "Bookmarks",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0f1a",
+  "theme_color": "#1d9bf0",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%231d9bf0'/><path d='M6 3h10a1.5 1.5 0 011.5 1.5v14L12 15.5 6.5 18.5V4.5A1.5 1.5 0 018 3z' fill='white' transform='translate(1,1.5) scale(0.85)'/></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
